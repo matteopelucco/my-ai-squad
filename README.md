@@ -2,7 +2,7 @@
 
 Framework per progetti sviluppati con una squadra di agenti [Claude Code](https://code.claude.com/docs): in pochi minuti un nuovo progetto ha agenti, skill, guardrail deterministici, CI agentica e convenzioni già collaudati, e li riceve aggiornati quando il framework evolve.
 
-> **Stato: v0.1.0, in sviluppo.** Esiste lo scheletro del repository (marketplace, due plugin vuoti, template Copier minimo, CI di validazione); agenti, skill, hook e template completo arrivano con le prossime issue ([roadmap](docs/roadmap.md)).
+> **Stato: in sviluppo (versione in `VERSION`).** Esiste lo scheletro del repository (marketplace, due plugin, template Copier minimo, CI di validazione) e gli hook di guardia; agenti, skill e template completo arrivano con le prossime issue ([roadmap](docs/roadmap.md)).
 
 ## Stato dello sviluppo
 
@@ -11,7 +11,8 @@ Framework per progetti sviluppati con una squadra di agenti [Claude Code](https:
 | Marketplace `my-ai-squad` e plugin `squad-core`, `squad-nextjs-supabase` | scheletro vuoto |
 | Template Copier (`template/`) | minimo: `AGENTS.md`, `CLAUDE.md` |
 | CI di validazione (`claude plugin validate`, `copier copy`, versione) | attiva |
-| Agenti, skill, hook di guardia, pacchetto di stack | da fare |
+| Hook di guardia in `squad-core` (comandi, perimetri di scrittura, `Stop`) con test; regole `deny` su `.env*` nel template | fatto ([guida](docs/guides/guardrail.md)) |
+| Agenti, skill, pacchetto di stack | da fare |
 
 La versione è in [`VERSION`](VERSION) ed è incrementata a ogni PR con `tests/bump-version.sh`.
 
@@ -19,7 +20,7 @@ La versione è in [`VERSION`](VERSION) ed è incrementata a ogni PR con `tests/b
 
 ```bash
 python3 -m venv ~/.venvs/copier && ~/.venvs/copier/bin/pip install copier
-PATH=~/.venvs/copier/bin:$PATH tests/validate.sh
+PATH=~/.venvs/copier/bin:$PATH tests/validate.sh   # serve anche Node 20+
 ```
 
 ## Da dove nasce
