@@ -27,16 +27,6 @@ visibility:
     Privato: private
   default: public
 
-verify_fast:
-  type: str
-  help: Comando dei controlli rapidi (tipi, lint, test veloci), eseguito alla fine di ogni lavoro dell'agente. Vuoto = nessuno
-  default: ""
-
-verify_full:
-  type: str
-  help: Comando dei controlli completi (build, test di integrazione), eseguito prima di aprire la PR. Vuoto = come quelli rapidi
-  default: ""
-
 stack:
   type: str
   help: Pacchetto di stack da abilitare
@@ -44,6 +34,16 @@ stack:
     Nessuno (solo nucleo): none
     Next.js + Supabase + Vercel: nextjs-supabase
   default: none
+
+verify_fast:
+  type: str
+  help: Comando dei controlli rapidi (tipi, lint, test veloci), eseguito alla fine di ogni lavoro dell'agente. Vuoto = nessuno
+  default: "{% if stack == 'nextjs-supabase' %}npm run typecheck && npm run lint && npm run test:unit{% endif %}"
+
+verify_full:
+  type: str
+  help: Comando dei controlli completi (build, test di integrazione), eseguito prima di aprire la PR. Vuoto = come quelli rapidi
+  default: "{% if stack == 'nextjs-supabase' %}npm run typecheck && npm run lint && npm run check:dup && npm run test:unit && npm run build{% endif %}"
 
 merge_mode:
   type: str

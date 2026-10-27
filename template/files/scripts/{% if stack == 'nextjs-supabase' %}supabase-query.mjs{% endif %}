@@ -1,0 +1,47 @@
+// Shared I/O of rls-check and grant-check: one read-only query on the Supabase TEST project
+// via the Management API, and the allow-list of deliberate exceptions.
+// The ref comes ONLY from SUPABASE_TEST_PROJECT_REF, the token from SUPABASE_ACCESS_TOKEN.
+
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+
+export const ALLOWLIST_FILE = 'supabase/security-allowlist.json';
+
+/** True when `metaUrl` is the module node was asked to run. */
+export const isMain = (metaUrl) => process.argv[1] && metaUrl === pathToFileURL(process.argv[1]).href;
+
+/** Names of an allow-list section; every entry must carry a reason. */
+export function allowlist(section) {
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync(ALLOWLIST_FILE, 'utf8'));
+  } catch {
+    return [];
+  }
+  const entries = raw?.[section] ?? [];
+  for (const e of entries) {
+    if (typeof e?.name !== 'string' || typeof e?.reason !== 'string' || !e.reason.trim()) {
+      throw new Error(`${ALLOWLIST_FILE}: ogni voce di "${section}" deve avere name e reason.`);
+    }
+  }
+  return entries.map((e) => e.name);
+}
+
+export async function queryTestDb(query) {
+  const ref = process.env.SUPABASE_TEST_PROJECT_REF;
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  if (!ref || !token) {
+    console.error('Servono SUPABASE_TEST_PROJECT_REF (progetto di TEST) e SUPABASE_ACCESS_TOKEN.');
+    process.exit(2);
+  }
+  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) {
+    console.error(`Query fallita: HTTP ${res.status} ${await res.text()}`);
+    process.exit(2);
+  }
+  return res.json();
+}

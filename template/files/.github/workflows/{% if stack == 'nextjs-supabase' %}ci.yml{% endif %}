@@ -1,0 +1,192 @@
+name: CI
+
+# Pacchetto Next.js + Supabase + Vercel. Tre job, un solo check obbligatorio:
+#
+#   statico ──► e2e ──► verifica
+#      └────────────────────┘
+#
+# - `statico`: tipi, lint, duplicati, unit test e build. Nessun accesso al DB, nessun
+#   segreto sensibile: gira in parallelo tra PR diverse.
+# - `e2e`: reset del DB di TEST, pgTAP, rls-check, grant-check, Playwright. Coda GLOBALE
+#   (il DB di test è uno solo e condiviso): una PR alla volta, `queue: max` perché senza
+#   GitHub tiene un solo job in attesa e il terzo cancella il secondo. L'attesa in coda
+#   non conta nel `timeout-minutes`. Non parte sulle PR di soli documenti né su Dependabot.
+# - `verifica`: il check richiesto dal ruleset di main ("CI / verifica"). NON rinominarlo
+#   e non dargli un `name:`. `always()` e non `!cancelled()`: un job richiesto `skipped`
+#   conta come verde, e un run annullato a mano lascerebbe la PR mergiabile senza CI.
+#
+# Mai `paths`/`paths-ignore`: un check obbligatorio mai eseguito blocca il merge. Le PR
+# di soli documenti eseguono comunque il workflow; build ed e2e si saltano con `if:`.
+#
+# Dependabot: le sue run vedono solo lo store di segreti "Dependabot", dove NON vanno
+# copiati SUPABASE_ACCESS_TOKEN, SUPABASE_SERVICE_ROLE_KEY né E2E_ACCOUNTS (uno script
+# postinstall di una dipendenza aggiornata li leggerebbe prima di ogni revisione umana).
+# Per questo la e2e non parte; un bump che tocca codice sensibile si rifà da un branch umano.
+#
+# Contratto con il progetto: script npm `typecheck`, `lint`, `check:dup`, `test:unit`,
+# `build`, `test:e2e` e, facoltativo, `e2e:prepare` (ricrea gli account di test dopo il
+# reset). Variabile di repo SUPABASE_TEST_PROJECT_REF; segreti verso il solo progetto di TEST.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  statico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      needs-e2e: ${{ steps.e2e.outputs.needs-e2e }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Classify changes
+        id: changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: echo "kind=$(scripts/classify-changes.sh "$BASE")" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether e2e is needed
+        id: e2e
+        env:
+          KIND: ${{ steps.changes.outputs.kind }}
+          ACTOR: ${{ github.actor }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [ "$KIND" != "code" ]; then
+            echo "::notice::PR di soli documenti: build ed e2e saltate."
+            echo "needs-e2e=false" >> "$GITHUB_OUTPUT"
+          elif [ "$ACTOR" = "dependabot[bot]" ] || [ "$AUTHOR" = "dependabot[bot]" ]; then
+            echo "::notice::PR di Dependabot: e2e saltata (nessun segreto sensibile). Se il bump tocca codice sensibile, rifare la PR da un branch umano."
+            echo "needs-e2e=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs-e2e=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Type-check
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Duplicates
+        run: npm run check:dup
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Build
+        if: steps.changes.outputs.kind == 'code'
+        run: npm run build
+        env:
+          # Inlinate nel bundle come su Vercel: chiavi del progetto di TEST.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  e2e:
+    needs: statico
+    if: needs.statico.outputs.needs-e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: db-test-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_TEST_PROJECT_REF: ${{ vars.SUPABASE_TEST_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # `next start` serve la build di produzione: si ricompila qui invece di passarla tra job.
+      - name: Build
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Reset the TEST database
+        run: supabase db reset --linked --project-ref "$SUPABASE_TEST_PROJECT_REF" --yes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: RLS tests (pgTAP)
+        run: supabase test db --linked --project-ref "$SUPABASE_TEST_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: RLS check
+        run: node scripts/rls-check.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: GRANT check
+        run: node scripts/grant-check.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # Il reset azzera anche auth.users: il progetto ricrea qui i suoi account di test.
+      # Solo questo step riceve la service_role: mai gli e2e.
+      - name: Prepare e2e accounts
+        run: npm run --if-present e2e:prepare
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_ACCOUNTS: ${{ secrets.E2E_ACCOUNTS }}
+      - name: End-to-end tests
+        run: npm run test:e2e
+        env:
+          E2E_ACCOUNTS: ${{ secrets.E2E_ACCOUNTS }}
+      - name: Upload the Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+  # Check obbligatorio del ruleset di main: NON rinominare, niente `name:`.
+  verifica:
+    needs: [statico, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Result of statico and e2e
+        env:
+          STATICO: ${{ needs.statico.result }}
+          E2E: ${{ needs.e2e.result }}
+          NEEDS_E2E: ${{ needs.statico.outputs.needs-e2e }}
+        run: |
+          echo "statico: $STATICO, e2e: $E2E, needs-e2e: ${NEEDS_E2E:-?}"
+          if [ "$STATICO" != "success" ]; then
+            echo "::error::Job statico: $STATICO."
+            exit 1
+          fi
+          if [ "$NEEDS_E2E" = "true" ]; then
+            [ "$E2E" = "success" ] && exit 0
+            if [ "$E2E" = "cancelled" ]; then
+              echo "::error::Job e2e cancellato (push più recente, annullo a mano o coda del DB). Senza un run più recente: gh run rerun <run-id> --failed."
+            else
+              echo "::error::Job e2e: $E2E."
+            fi
+            exit 1
+          fi
+          if [ "$E2E" != "skipped" ]; then
+            echo "::error::Job e2e: $E2E, atteso skipped."
+            exit 1
+          fi
+          echo "e2e saltata di proposito."

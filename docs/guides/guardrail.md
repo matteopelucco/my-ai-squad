@@ -17,7 +17,7 @@ Solo ciò che non ha eccezioni è imposto da hook e regole `deny` (principio 1 d
 | `git reset --hard`, `git clean -f` | chiede | Perde modifiche non salvate. |
 | `rm -r` su `/`, `~`, `$HOME` | nega | Distruttivo. |
 
-Le operazioni remote su database e deploy di produzione dipendono dallo stack: arrivano con il pacchetto di stack.
+Le operazioni remote su database e deploy di produzione dipendono dallo stack: le guarda l'hook del pacchetto ([Next.js + Supabase + Vercel](nextjs-supabase.md#plugin-squad-nextjs-supabase)).
 
 ## File
 

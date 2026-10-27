@@ -1,0 +1,55 @@
+name: Release
+
+# Tag vX.Y.Z e GitHub Release a ogni merge su main che cambia la `version` di package.json
+# (ogni PR la incrementa). Il changelog è la pagina Releases, con le note generate da GitHub:
+# niente CHANGELOG.md, che richiederebbe un commit diretto su main.
+# Non fa parte del gate: un fallimento non blocca il deploy; si recupera con
+# workflow_dispatch e `force`. Nessun `git push`: tag e release via API.
+
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Crea tag e release per la versione attuale anche se non è cambiata (idempotente)
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BEFORE_SHA: ${{ github.event.before || format('{0}^', github.sha) }}
+      HEAD_SHA: ${{ github.sha }}
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force && '--force' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Decide the tag
+        id: tag
+        run: echo "tag=$(scripts/release-tag.sh "$BEFORE_SHA" "$HEAD_SHA" $FORCE)" >> "$GITHUB_OUTPUT"
+      - name: Create tag and release
+        if: steps.tag.outputs.tag != ''
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::La release $TAG esiste già."
+            exit 0
+          fi
+          gh release create "$TAG" --target "$HEAD_SHA" --title "$TAG" --generate-notes

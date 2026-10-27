@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+// GRANT-check: compares the tables the code uses, per Postgres role, with the GRANTs of the
+// TEST database just reset by CI, and fails on each missing one. A missing GRANT is the cause
+// of every "permission denied": RLS filters rows, but Postgres still requires the privilege.
+// It is an anti-permission-denied check, NOT a security check: it sees neither excess grants
+// nor RLS (that is rls-check) nor production.
+//
+// Static heuristic, deliberately simple:
+// - the file is split into blocks at each top-level function / const arrow;
+// - `.from('table')` on a variable assigned from `createAdminClient()` (or typed as its
+//   ReturnType) is `service_role`; on a parameter typed `SupabaseClient` it is both roles;
+//   on any other client it is `authenticated`;
+// - `// grant-check: service_role` (or `authenticated`) right above a function forces the role;
+// - the privilege is the first query method after `.from(...)`; none means SELECT.
+// Usage: node scripts/grant-check.mjs
+
+import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { isMain, queryTestDb } from './supabase-query.mjs';
+
+export const SOURCE_DIRS = ['app', 'lib', 'components', 'src'];
+const ALL_ROLES = ['authenticated', 'service_role'];
+
+export const GRANT_QUERY = `select grantee, table_name, privilege_type
+from information_schema.role_table_grants
+where table_schema = 'public' and grantee in ('authenticated', 'service_role')
+union
+select grantee, table_name, privilege_type
+from information_schema.column_privileges
+where table_schema = 'public' and grantee in ('authenticated', 'service_role')`;
+
+const BLOCK_START = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\b|^(?:export\s+)?const\s+\w+\s*=\s*(?:async\s*)?\(/;
+const ANNOTATION = /^\s*\/\/\s*grant-check:\s*(service_role|authenticated)\b/;
+
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => ANNOTATION.test(line) || !/^\s*(\/\/|\*)/.test(line))
+    .join('\n');
+}
+
+function splitBlocks(src) {
+  const blocks = [];
+  let current = [];
+  for (const line of src.split('\n')) {
+    if (BLOCK_START.test(line) && current.length > 0) {
+      // annotations right above the function belong to the new block
+      const tail = [];
+      while (current.length > 0 && ANNOTATION.test(current[current.length - 1])) tail.unshift(current.pop());
+      blocks.push(current.join('\n'));
+      current = tail;
+    }
+    current.push(line);
+  }
+  blocks.push(current.join('\n'));
+  return blocks;
+}
+
+function chainPrivileges(rest) {
+  const method = /^\s*\.(select|insert|update|delete|upsert)\s*\(/.exec(rest)?.[1];
+  if (method === 'upsert') return ['INSERT', 'UPDATE'];
+  return [method && method !== 'select' ? method.toUpperCase() : 'SELECT'];
+}
+
+function names(block, pattern) {
+  return new Set([...block.matchAll(pattern)].map((m) => m[1]));
+}
+
+function receiverRoles(before, admin, generic, forced) {
+  if (forced) return [forced];
+  if (/createAdminClient\s*\(\s*\)\s*$/.test(before)) return ['service_role'];
+  const name = /(\w+)\s*$/.exec(before)?.[1];
+  if (name && admin.has(name)) return ['service_role'];
+  if (name && generic.has(name)) return ALL_ROLES;
+  return ['authenticated'];
+}
+
+/** @returns {{ file: string, role: string, table: string, privilege: string }[]} */
+export function extractRequests(file, source) {
+  const requests = [];
+  for (const block of splitBlocks(stripComments(source))) {
+    const admin = new Set([
+      ...names(block, /(\w+)\s*=\s*(?:await\s+)?createAdminClient\s*\(/g),
+      ...names(block, /(\w+)\s*:\s*ReturnType<typeof createAdminClient>/g),
+    ]);
+    const generic = names(block, /(\w+)\s*:\s*SupabaseClient\b/g);
+    const forced = block.split('\n').map((l) => ANNOTATION.exec(l)?.[1]).find(Boolean) ?? null;
+    const re = /(?<!\b(?:Array|Buffer|Object|Date|String|Set|Map))\.from\(\s*['"]([a-z_][a-z0-9_]*)['"]\s*\)/g;
+    for (const m of block.matchAll(re)) {
+      const roles = receiverRoles(block.slice(0, m.index), admin, generic, forced);
+      for (const role of roles) {
+        for (const privilege of chainPrivileges(block.slice(m.index + m[0].length))) {
+          requests.push({ file, role, table: m[1], privilege });
+        }
+      }
+    }
+  }
+  return requests;
+}
+
+/** Requests without a matching grant, one per role/table/privilege/file. */
+export function missingGrants(requests, grants) {
+  const present = new Set(grants.map((g) => `${g.grantee}|${g.table_name}|${g.privilege_type}`));
+  const seen = new Set();
+  return requests.filter((r) => {
+    const key = `${r.role}|${r.table}|${r.privilege}|${r.file}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return !present.has(`${r.role}|${r.table}|${r.privilege}`);
+  });
+}
+
+export function formatMissing(missing) {
+  return [
+    ...missing.map((m) => `GRANT mancante: ${m.privilege} su public.${m.table} per ${m.role} (in ${m.file})`),
+    '',
+    'Rimedio: un GRANT nella migration che crea o modifica la tabella, insieme alle policy RLS. Se la',
+    'tabella serve solo a codice server senza sessione utente, attribuisci il client a service_role',
+    '(`// grant-check: service_role` sopra la funzione) invece di concedere il grant ad authenticated.',
+  ].join('\n');
+}
+
+function* sourceFiles(dir) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) {
+      if (name !== 'node_modules' && name !== '.next') yield* sourceFiles(p);
+    } else if (/\.(ts|tsx|js|jsx|mts|mjs)$/.test(name) && !/\.(test|spec)\.\w+$/.test(name)) {
+      yield p;
+    }
+  }
+}
+
+if (isMain(import.meta.url)) {
+  const requests = SOURCE_DIRS.filter((d) => existsSync(d)).flatMap((d) =>
+    [...sourceFiles(d)].flatMap((f) => extractRequests(f, readFileSync(f, 'utf8'))),
+  );
+  if (requests.length === 0) {
+    console.log(`GRANT-check: nessuna query .from(...) in ${SOURCE_DIRS.join(', ')}, niente da verificare.`);
+    process.exit(0);
+  }
+  const grants = await queryTestDb(GRANT_QUERY);
+  if (!Array.isArray(grants) || grants.length === 0) {
+    console.error('Nessun grant letto dal DB di test: risposta inattesa, controllo non affidabile.');
+    process.exit(2);
+  }
+  console.log(`GRANT-check: ${requests.length} richieste dal codice, ${grants.length} grant nel DB di test.`);
+  const missing = missingGrants(requests, grants);
+  if (missing.length > 0) {
+    console.error(formatMissing(missing));
+    for (const m of missing) console.log(`::error file=${m.file}::GRANT mancante: ${m.privilege} su public.${m.table} per ${m.role}`);
+    process.exit(1);
+  }
+  console.log('OK: tutti i grant richiesti dal codice sono presenti.');
+}

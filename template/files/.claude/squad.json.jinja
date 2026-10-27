@@ -1,9 +1,12 @@
 {
-  "verify": {{ verify_fast | tojson }},
-  "verifyFull": {{ (verify_full or verify_fast) | tojson }},
+  "verify": {{ verify_fast | tojson | replace('\\u0026', '&') }},
+  "verifyFull": {{ (verify_full or verify_fast) | tojson | replace('\\u0026', '&') }},
   "mergeMode": {{ merge_mode | tojson }},
   "writeScopes": {
     "product-analyst": ["docs/", "specs/"],
-    "test-engineer": ["tests/", "test/", "e2e/"]
-  }
+    "test-engineer": ["tests/", "test/", "e2e/"{% if stack == 'nextjs-supabase' %}, "supabase/tests/"{% endif %}]
+  }{% if stack == 'nextjs-supabase' %},
+  "supabase": {
+    "testProjectRef": ""
+  }{% endif %}
 }

@@ -25,6 +25,15 @@
 - Completi (prima della PR): {% if verify_full or verify_fast %}`{{ verify_full or verify_fast }}`{% else %}da definire{% endif %}
 
 La PR riporta comando ed esito dei controlli e ciò che non è stato verificato.
+{%- if stack == 'nextjs-supabase' %}
+
+## Stack: Next.js + Supabase + Vercel
+
+- Script npm richiesti da CI e hook: `typecheck` (`next typegen && tsc --noEmit`), `lint`, `check:dup`, `test:unit`, `build`, `test:e2e`; facoltativo `e2e:prepare`. `"prepare": "git config core.hooksPath .githooks"` attiva l'hook pre-push.
+- Migration solo come file nuovi in `supabase/migrations/`; una migration applicata non si modifica. Ogni tabella nuova ha RLS, policy e GRANT nella stessa migration, e un test pgTAP con il caso negato (skill `squad-nextjs-supabase:supabase-migration`).
+- Il DB di test è unico e lo resetta la CI: niente e2e in locale mentre una CI e2e è in corso. Gli agenti toccano solo il progetto di test, con `--project-ref` esplicito (`supabase.testProjectRef` in `.claude/squad.json`); la produzione e i deploy li fa l'umano.
+- `service_role` solo lato server nei file ammessi, mai nel client né negli e2e. Le review di RLS, GRANT e autenticazione seguono la skill `squad-nextjs-supabase:supabase-security`.
+{%- endif %}
 
 ## Priorità
 

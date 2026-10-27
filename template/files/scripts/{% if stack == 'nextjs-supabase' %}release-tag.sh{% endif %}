@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Prints the tag to release (vX.Y.Z from package.json at <head>) when the version changed
+# since <before>, or nothing. With --force, prints the tag even if the version is unchanged.
+# Usage: scripts/release-tag.sh <before> <head> [--force]
+set -euo pipefail
+
+before="$1"; head="$2"; force="${3:-}"
+version_at() { git show "$1:package.json" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).version||"")}catch{}})'; }
+
+current="$(version_at "$head")"
+[ -n "$current" ] || { echo "package.json senza version in $head" >&2; exit 1; }
+previous="$(version_at "$before" || true)"
+if [ "$force" = "--force" ] || [ "$current" != "$previous" ]; then
+  echo "v$current"
+fi
