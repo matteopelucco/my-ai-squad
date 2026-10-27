@@ -38,6 +38,17 @@ Ricavati dall'[analisi](research/2026-10-analisi-setup-ai.md); ognuno diventa re
 - [ ] Versionamento, release e changelog
 - [ ] Guida all'adozione e all'aggiornamento
 
+### Ordine di lavoro
+
+Deciso il 2026-10-27: v0.1 completa prima dell'adozione; una issue per sessione di Claude Code aperta in questo repository, fino alla PR, con review e merge dell'utente.
+
+1. #1 struttura (base di tutto il resto)
+2. #4 hook di guardia (prima degli agenti, così ogni lavoro successivo gira già con i divieti imposti)
+3. #2 agenti, #3 skill: da qui il repository si gestisce con la propria squadra
+4. #5 template del nucleo, #9 progetto campione in CI
+5. #6 pacchetto Next.js/Supabase, #7 budget, #8 attività in cloud
+6. #11 guida, #10 release v0.1
+
 ## Adozione (ADR-0010)
 
 1. sitescanner (solo nucleo)
