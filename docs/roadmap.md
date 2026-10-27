@@ -26,7 +26,7 @@ Ricavati dall'[analisi](research/2026-10-analisi-setup-ai.md); ognuno diventa re
 
 ## Versione 0.1 — il nucleo funzionante
 
-- [ ] Struttura di marketplace, plugin e template Copier
+- [x] Struttura di marketplace, plugin e template Copier
 - [ ] Agenti della squadra standard (ADR-0005)
 - [ ] Skill di flusso migrate dai comandi di girasole e communio
 - [ ] Hook di guardia deterministici con test, regole `deny`, hook `Stop`

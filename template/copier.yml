@@ -1,0 +1,12 @@
+_min_copier_version: "9.0.0"
+_subdirectory: files
+_templates_suffix: .jinja
+
+project_name:
+  type: str
+  help: Nome del progetto
+
+project_description:
+  type: str
+  help: Descrizione in una riga
+  default: ""
