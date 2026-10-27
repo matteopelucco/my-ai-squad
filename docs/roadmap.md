@@ -30,7 +30,7 @@ Ricavati dall'[analisi](research/2026-10-analisi-setup-ai.md); ognuno diventa re
 - [x] Agenti della squadra standard (ADR-0005)
 - [x] Skill di flusso migrate dai comandi di girasole e communio
 - [x] Hook di guardia deterministici con test, regole `deny`, hook `Stop`
-- [ ] Template Copier del nucleo
+- [x] Template Copier del nucleo
 - [ ] Pacchetto Next.js/Supabase/Vercel
 - [ ] Budget del piano Pro con strumenti documentati
 - [ ] Ricetta opzionale per le attività schedulate in cloud (ADR-0006)

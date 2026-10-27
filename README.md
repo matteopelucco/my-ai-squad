@@ -2,14 +2,14 @@
 
 Framework per progetti sviluppati con una squadra di agenti [Claude Code](https://code.claude.com/docs): in pochi minuti un nuovo progetto ha agenti, skill, guardrail deterministici, CI agentica e convenzioni già collaudati, e li riceve aggiornati quando il framework evolve.
 
-> **Stato: in sviluppo (versione in `VERSION`).** Esiste lo scheletro del repository (marketplace, due plugin, template Copier minimo, CI di validazione) gli hook di guardia, gli agenti e le skill di flusso; template completo arrivano con le prossime issue ([roadmap](docs/roadmap.md)).
+> **Stato: in sviluppo (versione in `VERSION`).** Esiste lo scheletro del repository (marketplace, due plugin, template Copier minimo, CI di validazione) gli hook di guardia, gli agenti e le skill di flusso e il template del nucleo; pacchetto di stack arrivano con le prossime issue ([roadmap](docs/roadmap.md)).
 
 ## Stato dello sviluppo
 
 | Componente | Stato |
 | --- | --- |
 | Marketplace `my-ai-squad` e plugin `squad-core`, `squad-nextjs-supabase` | scheletro vuoto |
-| Template Copier (`template/`) | minimo: `AGENTS.md`, `CLAUDE.md` |
+| Template Copier del nucleo (`template/`): `AGENTS.md`/`CLAUDE.md`, impostazioni con marketplace e plugin, template di issue e PR, script di label e Project, workflow di triage e chiusura issue; `copier update` verificato | fatto ([guida](docs/guides/template.md)) |
 | CI di validazione (`claude plugin validate`, `copier copy`, versione) | attiva |
 | Hook di guardia in `squad-core` (comandi, perimetri di scrittura, `Stop`) con test; regole `deny` su `.env*` nel template | fatto ([guida](docs/guides/guardrail.md)) |
 | Agenti della squadra in `squad-core` (`triage`, `product-analyst`, `test-engineer`, `implementer`, `reviewer`, `security-reviewer`) con controllo automatico | fatto |

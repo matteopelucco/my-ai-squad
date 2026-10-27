@@ -154,6 +154,12 @@ describe('hook scripts', () => {
     assert.equal(JSON.parse(run.stdout).hookSpecificOutput.permissionDecision, 'deny');
   });
 
+  it('guard-commands denies every merge when mergeMode is human', () => {
+    writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ mergeMode: 'human' }));
+    const run = runHook('guard-commands.mjs', { tool_input: { command: 'gh pr merge 5 --squash' }, cwd: project }, { env: { CLAUDE_PROJECT_DIR: project } });
+    assert.equal(JSON.parse(run.stdout).hookSpecificOutput.permissionDecision, 'deny');
+  });
+
   it('guard-commands is silent for harmless commands and bad input', () => {
     assert.equal(runHook('guard-commands.mjs', { tool_input: { command: 'ls' }, cwd: project }).stdout, '');
     assert.equal(spawnSync('node', [path.join(hooks, 'guard-commands.mjs')], { input: 'not json' }).status, 0);
