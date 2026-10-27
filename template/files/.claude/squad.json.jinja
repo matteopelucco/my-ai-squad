@@ -1,5 +1,6 @@
 {
   "verify": {{ verify_fast | tojson }},
+  "verifyFull": {{ (verify_full or verify_fast) | tojson }},
   "mergeMode": {{ merge_mode | tojson }},
   "writeScopes": {
     "product-analyst": ["docs/", "specs/"],
