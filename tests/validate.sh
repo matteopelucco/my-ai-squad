@@ -5,6 +5,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
+tests/version.sh
 claude plugin validate --strict .
 for plugin in plugins/*/; do
   claude plugin validate --strict "$plugin"

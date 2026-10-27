@@ -4,6 +4,7 @@
     "name": "Matteo Pelucco"
   },
   "metadata": {
+    "version": "0.1.0",
     "description": "Squadra di agenti Claude Code: nucleo indipendente dallo stack e pacchetti di stack"
   },
   "plugins": [

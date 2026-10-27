@@ -1,6 +1,6 @@
 {
   "name": "squad-core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Nucleo indipendente dallo stack: agenti, skill di flusso, hook di guardia",
   "author": { "name": "Matteo Pelucco" },
   "license": "MIT"

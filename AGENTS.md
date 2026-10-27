@@ -10,3 +10,5 @@ Framework di setup AI per altri progetti: marketplace di plugin Claude Code e te
 - Ogni componente distribuito (skill, agente, hook, file del template) ha una verifica automatica: test degli hook, `claude plugin validate`, generazione del progetto campione.
 - Una decisione architetturale nuova o cambiata → ADR in `docs/adr/` (MADR) e indice aggiornato.
 - Modelli indicati per alias (`haiku`, `sonnet`, `opus`), mai per versione.
+- Versione del repo in `VERSION`, allineata ai manifest: ogni PR la incrementa con `tests/bump-version.sh` (patch di default; `minor`/`major` per cambi maggiori); la CI lo verifica.
+- `README.md` riflette sempre lo stato dello sviluppo: ogni PR lo aggiorna.
