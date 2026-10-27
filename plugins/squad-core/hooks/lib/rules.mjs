@@ -1,5 +1,5 @@
 // Pure decision logic for the squad-core guard hooks. No I/O here, so it can be
-// unit-tested with `node --test tests/hooks/`.
+// unit-tested with `node --test "tests/hooks/*.test.mjs"`.
 
 import path from 'node:path';
 

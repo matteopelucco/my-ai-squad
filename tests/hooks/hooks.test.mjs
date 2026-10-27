@@ -1,4 +1,4 @@
-// Tests for the squad-core guard hooks. Run: node --test tests/hooks/
+// Tests for the squad-core guard hooks. Run: node --test "tests/hooks/*.test.mjs"
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
