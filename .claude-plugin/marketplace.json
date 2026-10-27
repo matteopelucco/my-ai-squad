@@ -1,0 +1,21 @@
+{
+  "name": "my-ai-squad",
+  "owner": {
+    "name": "Matteo Pelucco"
+  },
+  "metadata": {
+    "description": "Squadra di agenti Claude Code: nucleo indipendente dallo stack e pacchetti di stack"
+  },
+  "plugins": [
+    {
+      "name": "squad-core",
+      "source": "./plugins/squad-core",
+      "description": "Nucleo indipendente dallo stack: agenti, skill di flusso, hook di guardia"
+    },
+    {
+      "name": "squad-nextjs-supabase",
+      "source": "./plugins/squad-nextjs-supabase",
+      "description": "Pacchetto di stack per Next.js, Supabase e Vercel"
+    }
+  ]
+}
