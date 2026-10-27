@@ -7,6 +7,7 @@ cd "$root"
 
 tests/version.sh
 tests/agents.sh
+tests/skills.sh
 node --test "tests/hooks/*.test.mjs"
 claude plugin validate --strict .
 for plugin in plugins/*/; do

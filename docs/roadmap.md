@@ -28,7 +28,7 @@ Ricavati dall'[analisi](research/2026-10-analisi-setup-ai.md); ognuno diventa re
 
 - [x] Struttura di marketplace, plugin e template Copier
 - [x] Agenti della squadra standard (ADR-0005)
-- [ ] Skill di flusso migrate dai comandi di girasole e communio
+- [x] Skill di flusso migrate dai comandi di girasole e communio
 - [x] Hook di guardia deterministici con test, regole `deny`, hook `Stop`
 - [ ] Template Copier del nucleo
 - [ ] Pacchetto Next.js/Supabase/Vercel
