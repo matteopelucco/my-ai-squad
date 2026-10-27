@@ -24,6 +24,7 @@ jobs:
           python-version: "3.12"
       - run: npm install -g @anthropic-ai/claude-code
       - run: pip install copier
+      - run: node --test tests/hooks/
       - run: tests/validate.sh
       - if: github.event_name == 'pull_request'
         run: tests/version.sh --bumped origin/${{ github.base_ref }}
