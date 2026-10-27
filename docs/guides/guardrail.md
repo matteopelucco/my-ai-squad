@@ -24,6 +24,8 @@ Le operazioni remote su database e deploy di produzione dipendono dallo stack: a
 - **File `.env*`**: regole `deny` di lettura in `.claude/settings.json` del template.
 - **Perimetri di scrittura per agente** (hook `guard-paths.mjs`): gli agenti di un plugin non possono dichiarare hook propri, quindi il plugin ne registra uno per ogni scrittura e riconosce l'agente da `agent_type`. Limita `product-analyst` e `test-engineer` ai percorsi di `writeScopes` in `.claude/squad.json` (il template propone `docs/`, `specs/` e `tests/`); un agente limitato senza perimetro dichiarato non scrive niente, gli altri agenti e la sessione principale non sono toccati; `/tmp` è sempre consentito. I revisori sono in sola lettura perché non hanno i tool di scrittura.
 
+- **Modalità di merge** (`mergeMode` in `.claude/squad.json`): con `human` l'hook nega ogni `gh pr merge` degli agenti; con `ai-driven` (o assente) vale la regola dell'ADR-0004.
+
 ## Fine del lavoro (hook `Stop`)
 
 `verify` in `.claude/squad.json` è il comando rapido del progetto (typecheck, lint, test veloci). Se fallisce, l'hook rimanda Claude al lavoro con la coda dell'output; una sola volta per arresto, per non andare in ciclo. Senza `verify` non fa nulla.

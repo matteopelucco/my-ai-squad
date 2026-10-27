@@ -1,3 +1,35 @@
 # AGENTS.md — {{ project_name }}
 
 {{ project_description }}
+
+## Regole
+
+- Backlog = GitHub Issues di questo repository. Una issue alla volta, branch `<tipo>/<n>-slug`, PR verso `main`. Mai commit o push su `main`.
+- Titoli delle issue e delle PR: `<tipo>(<ambito>): <descrizione>`.
+- {% if docs_language == 'it' %}Codice, identificatori e commit in inglese (Conventional Commits); documenti, issue e PR in italiano.{% else %}Code, identifiers, commits, documents, issues and PRs in English (Conventional Commits).{% endif %}
+{%- if visibility == 'public' %}
+- Repository pubblico: niente segreti, niente dati reali o personali, nemmeno nelle fixture.
+{%- else %}
+- Repository privato: niente segreti nel codice, nei commenti e nei log.
+{%- endif %}
+- Una decisione architetturale nuova o cambiata → ADR in `docs/adr/`.
+{%- if merge_mode == 'human' %}
+- Il merge delle PR è sempre dell'umano: gli agenti aprono la PR in bozza e si fermano.
+{%- else %}
+- Gli agenti mergiano solo PR che chiudono una issue `ai-driven`, a CI verde, mai con `--admin`. Le issue `human-in-the-loop` le mergia l'umano.
+{%- endif %}
+
+## Controlli
+
+- Rapidi (a fine lavoro): {% if verify_fast %}`{{ verify_fast }}`{% else %}da definire in `.claude/squad.json` (`verify`){% endif %}
+- Completi (prima della PR): {% if verify_full or verify_fast %}`{{ verify_full or verify_fast }}`{% else %}da definire{% endif %}
+
+La PR riporta comando ed esito dei controlli e ciò che non è stato verificato.
+
+## Priorità
+
+Le issue `status:ready` si lavorano per priorità del Project (più in alto = prima); a parità, prima i `type:bug`.
+
+## Squadra
+
+Agenti e skill vengono dal plugin `squad-core` (`/squad-core:work-on-issue`, `/squad-core:next-task`, …); i perimetri di scrittura e il comando di verifica sono in `.claude/squad.json`.

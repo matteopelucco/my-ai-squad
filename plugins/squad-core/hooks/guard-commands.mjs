@@ -4,6 +4,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { readConfig } from './lib/config.mjs';
 import { mergeAllowed } from './lib/github.mjs';
 import { evaluateCommand, mergeTargets } from './lib/rules.mjs';
 
@@ -30,9 +31,10 @@ const command = input?.tool_input?.command;
 if (typeof command === 'string' && command.length > 0) {
   const cwd = input.cwd || process.cwd();
   const targets = mergeTargets(command);
+  const humanOnly = targets.length > 0 && readConfig(process.env.CLAUDE_PROJECT_DIR || cwd).mergeMode === 'human';
   const result = evaluateCommand(command, {
     branch: currentBranch(cwd),
-    mergeAllowed: targets.length > 0 && mergeAllowed(targets, cwd),
+    mergeAllowed: targets.length > 0 && !humanOnly && mergeAllowed(targets, cwd),
   });
   if (result) {
     process.stdout.write(
