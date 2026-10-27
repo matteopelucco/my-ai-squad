@@ -1,6 +1,6 @@
 {
   "name": "squad-nextjs-supabase",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Pacchetto di stack per Next.js, Supabase e Vercel",
   "author": { "name": "Matteo Pelucco" },
   "license": "MIT"
