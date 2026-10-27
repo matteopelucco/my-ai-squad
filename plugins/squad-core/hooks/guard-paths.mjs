@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// PreToolUse hook (Write | Edit | NotebookEdit) scoped to a subagent: restricts the
-// files the agent may write. Usage: node guard-paths.mjs <profile>
+// PreToolUse hook (Write | Edit | NotebookEdit) that restricts the files a subagent may write.
+// Usage: node guard-paths.mjs [profile]
+// With no profile, it is derived from `agent_type` in the hook input (plugin subagents cannot
+// declare hooks, so the plugin registers this one for every write): only the agents listed in
+// SCOPED_AGENTS are restricted, any other agent or the main session is left alone.
 // Scopes come from `writeScopes` in the project's .claude/squad.json.
 // Exit code 2 blocks the tool call.
 
 import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { readConfig } from './lib/config.mjs';
-import { evaluateWrite } from './lib/rules.mjs';
+import { agentProfile, evaluateWrite } from './lib/rules.mjs';
 
-const profile = process.argv[2];
 
 let input;
 try {
@@ -18,6 +20,9 @@ try {
   process.stderr.write('[guard-paths] input del hook non leggibile: scrittura bloccata per prudenza.\n');
   process.exit(2);
 }
+
+const profile = process.argv[2] ?? agentProfile(input?.agent_type);
+if (!profile) process.exit(0);
 
 const filePath = input?.tool_input?.file_path ?? input?.tool_input?.notebook_path;
 const projectDir = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();

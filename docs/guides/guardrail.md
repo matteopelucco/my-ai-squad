@@ -22,7 +22,7 @@ Le operazioni remote su database e deploy di produzione dipendono dallo stack: a
 ## File
 
 - **File `.env*`**: regole `deny` di lettura in `.claude/settings.json` del template.
-- **Perimetri di scrittura per agente** (hook `guard-paths.mjs <profilo>`, da usare nel frontmatter degli agenti): i percorsi consentiti a ciascun profilo si dichiarano in `writeScopes` di `.claude/squad.json`. Un profilo non dichiarato non scrive niente; `/tmp` è sempre consentito.
+- **Perimetri di scrittura per agente** (hook `guard-paths.mjs`): gli agenti di un plugin non possono dichiarare hook propri, quindi il plugin ne registra uno per ogni scrittura e riconosce l'agente da `agent_type`. Limita `product-analyst` e `test-engineer` ai percorsi di `writeScopes` in `.claude/squad.json` (il template propone `docs/`, `specs/` e `tests/`); un agente limitato senza perimetro dichiarato non scrive niente, gli altri agenti e la sessione principale non sono toccati; `/tmp` è sempre consentito. I revisori sono in sola lettura perché non hanno i tool di scrittura.
 
 ## Fine del lavoro (hook `Stop`)
 

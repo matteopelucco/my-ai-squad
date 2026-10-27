@@ -132,6 +132,20 @@ function evaluateSegment(segment, context) {
  * @param {string[]} [extraAllowedRoots] absolute roots always allowed (e.g. the OS temp dir)
  * @returns {Decision | null}
  */
+/** Agents whose writes are confined to a profile of the same name in `writeScopes`. */
+export const SCOPED_AGENTS = ['product-analyst', 'test-engineer'];
+
+/**
+ * Maps a hook's `agent_type` (bare or plugin-scoped, e.g. `squad-core:test-engineer`) to its
+ * write profile, or undefined when the agent is not restricted.
+ * @param {string | undefined} agentType
+ */
+export function agentProfile(agentType) {
+  if (typeof agentType !== 'string') return undefined;
+  const name = agentType.slice(agentType.lastIndexOf(':') + 1);
+  return SCOPED_AGENTS.includes(name) ? name : undefined;
+}
+
 export function evaluateWrite(scopes, profile, filePath, projectDir, extraAllowedRoots = []) {
   const allowedPaths = scopes[profile];
   if (!allowedPaths) return { decision: 'deny', reason: `Profilo di scrittura sconosciuto: ${profile}. Va dichiarato in writeScopes di .claude/squad.json.` };

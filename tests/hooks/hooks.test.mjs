@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import { mergeAllowed } from '../../plugins/squad-core/hooks/lib/github.mjs';
-import { evaluateCommand, evaluateWrite, isAiDriven, mergeTargets } from '../../plugins/squad-core/hooks/lib/rules.mjs';
+import { agentProfile, evaluateCommand, evaluateWrite, isAiDriven, mergeTargets } from '../../plugins/squad-core/hooks/lib/rules.mjs';
 
 const hooks = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../plugins/squad-core/hooks');
 const branch = { branch: 'feat/4-x' };
@@ -108,6 +108,15 @@ describe('isAiDriven / mergeAllowed', () => {
   });
 });
 
+describe('agentProfile', () => {
+  it('maps bare and plugin-scoped names of scoped agents only', () => {
+    assert.equal(agentProfile('squad-core:product-analyst'), 'product-analyst');
+    assert.equal(agentProfile('test-engineer'), 'test-engineer');
+    assert.equal(agentProfile('squad-core:reviewer'), undefined);
+    assert.equal(agentProfile(undefined), undefined);
+  });
+});
+
 describe('evaluateWrite', () => {
   const scopes = { docs: ['docs/', 'README.md'] };
   const project = path.resolve('/proj');
@@ -156,6 +165,18 @@ describe('hook scripts', () => {
     const env = { CLAUDE_PROJECT_DIR: project, TMPDIR: path.join(project, '..', 'elsewhere') };
     assert.equal(runHook('guard-paths.mjs', { tool_input: { file_path: 'src/a.ts' } }, { env, args: ['docs'] }).status, 2);
     assert.equal(runHook('guard-paths.mjs', { tool_input: { file_path: 'docs/a.md' } }, { env, args: ['docs'] }).status, 0);
+  });
+
+  it('guard-paths derives the profile from agent_type and ignores other agents', () => {
+    writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ writeScopes: { 'test-engineer': ['tests/'] } }));
+    const env = { CLAUDE_PROJECT_DIR: project, TMPDIR: path.join(project, '..', 'elsewhere') };
+    const run = (agent_type, file_path) => runHook('guard-paths.mjs', { agent_type, tool_input: { file_path } }, { env }).status;
+    assert.equal(run('squad-core:test-engineer', 'src/a.ts'), 2);
+    assert.equal(run('test-engineer', 'tests/a.test.ts'), 0);
+    assert.equal(run('squad-core:implementer', 'src/a.ts'), 0);
+    assert.equal(run(undefined, 'src/a.ts'), 0);
+    // restricted agent with no declared scope fails closed
+    assert.equal(run('squad-core:product-analyst', 'docs/a.md'), 2);
   });
 
   it('stop-verify does nothing without a verify command', () => {

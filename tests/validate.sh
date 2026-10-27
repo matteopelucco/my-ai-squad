@@ -6,6 +6,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
 tests/version.sh
+tests/agents.sh
 node --test "tests/hooks/*.test.mjs"
 claude plugin validate --strict .
 for plugin in plugins/*/; do
