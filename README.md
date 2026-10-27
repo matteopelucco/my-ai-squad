@@ -9,11 +9,12 @@ Framework per progetti sviluppati con una squadra di agenti [Claude Code](https:
 | Componente | Stato |
 | --- | --- |
 | Marketplace `my-ai-squad` e plugin `squad-core`, `squad-nextjs-supabase` | scheletro vuoto |
-| Template Copier del nucleo (`template/`): `AGENTS.md`/`CLAUDE.md`, impostazioni con marketplace e plugin, template di issue e PR, script di label e Project, workflow di triage e chiusura issue; `copier update` verificato | fatto ([guida](docs/guides/template.md)) |
+| Template Copier del nucleo (`template/`): `AGENTS.md`/`CLAUDE.md`, impostazioni con marketplace e plugin, template di issue e PR, script di label e Project, workflow di triage e chiusura issue, CI con gate `verifica`; `copier update` verificato | fatto ([guida](docs/guides/template.md)) |
 | CI di validazione (`claude plugin validate`, `copier copy`, versione) | attiva |
 | Hook di guardia in `squad-core` (comandi, perimetri di scrittura, `Stop`) con test; regole `deny` su `.env*` nel template | fatto ([guida](docs/guides/guardrail.md)) |
 | Agenti della squadra in `squad-core` (`triage`, `product-analyst`, `test-engineer`, `implementer`, `reviewer`, `security-reviewer`) con controllo automatico | fatto |
 | Skill di flusso in `squad-core` (`work-on-issue`, `next-task`, `run-tasks`, `task-review`, `prepare-pr`, `owasp-check`, `rebase-pr`) con controllo automatico | fatto |
+| Progetto campione generato (con e senza stack) e verificato a ogni PR: stessi passi del gate `verifica`, su PR di codice e di soli documenti | fatto (`tests/sample.sh`) |
 | Pacchetto di stack | da fare |
 
 La versione è in [`VERSION`](VERSION) ed è incrementata a ogni PR con `tests/bump-version.sh`.

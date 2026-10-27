@@ -34,7 +34,7 @@ Ricavati dall'[analisi](research/2026-10-analisi-setup-ai.md); ognuno diventa re
 - [ ] Pacchetto Next.js/Supabase/Vercel
 - [ ] Budget del piano Pro con strumenti documentati
 - [ ] Ricetta opzionale per le attività schedulate in cloud (ADR-0006)
-- [ ] Progetto campione generato e verificato in CI
+- [x] Progetto campione generato e verificato in CI
 - [ ] Versionamento, release e changelog
 - [ ] Guida all'adozione e all'aggiornamento
 

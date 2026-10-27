@@ -15,4 +15,5 @@ for plugin in plugins/*/; do
 done
 
 tests/template.sh
+tests/sample.sh
 echo "OK"

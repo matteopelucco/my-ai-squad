@@ -9,6 +9,7 @@ permissions:
   contents: read
 
 jobs:
+  # Include il progetto campione (tests/sample.sh): il workflow di release (#10) dipenderà da questo job.
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
