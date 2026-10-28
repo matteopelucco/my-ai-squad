@@ -2,6 +2,12 @@
   "verify": {{ verify_fast | tojson | replace('\\u0026', '&') }},
   "verifyFull": {{ (verify_full or verify_fast) | tojson | replace('\\u0026', '&') }},
   "mergeMode": {{ merge_mode | tojson }},
+  "budget": {
+    "caps": { "fiveHour": 80, "weekly": 85, "context": 60 },
+    "costPerTask": { "fiveHour": 10, "weekly": 3 },
+    "fallbackTasks": 2,
+    "maxTasksWithoutN": 5
+  },
   "writeScopes": {
     "product-analyst": ["docs/", "specs/"],
     "test-engineer": ["tests/", "test/", "e2e/"{% if stack == 'nextjs-supabase' %}, "supabase/tests/"{% endif %}]

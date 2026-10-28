@@ -20,6 +20,7 @@ Genera un progetto con `copier copy gh:matteopelucco/my-ai-squad nome-progetto` 
 - Template di issue (`feature`, `bug`, `chore`) e di PR (con prova e «non verificato»).
 - `scripts/setup-labels.sh` (idempotente) e `scripts/setup-project.sh`: da eseguire una volta con `gh` autenticato.
 - Con `stack=nextjs-supabase`: CI a tre job, release, Dependabot, hook pre-push, `rls-check` e `grant-check` ([guida](nextjs-supabase.md)).
+- `.github/rulesets/main.json` e `scripts/apply-ruleset.sh`: il ruleset di `main` (PR e gate `verifica` obbligatori, niente force push né cancellazione, nessun bypass), da applicare una volta con un account amministratore.
 - Workflow `squad-triage` e `squad-close-issue`, e (senza stack) `ci.yml` con il job `verifica`: lo richiede il ruleset di `main`; esegue `verifyFull` (o `verify`) di `.claude/squad.json` e salta i controlli se la PR tocca solo documenti (`scripts/classify-changes.sh`).
 
 ## Workflow agentici (ADR-0011, ADR-0012)
@@ -29,3 +30,5 @@ Il triage parte solo su issue di `OWNER`, `MEMBER` o `COLLABORATOR`, con tool el
 ## Progetto campione
 
 `tests/sample.sh` (parte di `tests/validate.sh`, quindi della CI del framework) genera un progetto con e senza pacchetto di stack, esegue i passi del gate `verifica` e controlla la classificazione su una PR di codice, una di soli documenti e una mista; con lo stack esegue anche il gate a tre job, l'hook pre-push e il calcolo del tag.
+
+Vedi anche: [adozione e aggiornamento](adozione.md), [budget](budget.md), [attività in cloud](cloud.md).

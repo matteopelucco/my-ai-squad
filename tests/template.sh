@@ -32,6 +32,18 @@ test -f "$p/.github/pull_request_template.md"
 bash -n "$p/scripts/setup-labels.sh"; bash -n "$p/scripts/setup-project.sh"
 test -x "$p/scripts/setup-labels.sh"
 
+# --- ruleset of main ---
+python3 - "$p/.github/rulesets/main.json" <<'PY'
+import json, sys
+r = json.load(open(sys.argv[1]))
+types = {x["type"] for x in r["rules"]}
+assert {"deletion", "non_fast_forward", "pull_request", "required_status_checks"} <= types, types
+checks = [c["context"] for x in r["rules"] if x["type"] == "required_status_checks" for c in x["parameters"]["required_status_checks"]]
+assert checks == ["verifica"], checks
+assert r["bypass_actors"] == [] and r["enforcement"] == "active"
+PY
+bash -n "$p/scripts/apply-ruleset.sh"
+
 # --- variants ---
 gen full --data stack=nextjs-supabase --data merge_mode=ai-driven --data visibility=private \
   --data docs_language=en --data verify_fast="npm run check" --data verify_full="npm run build"
