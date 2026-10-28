@@ -2,20 +2,20 @@
 
 Framework per progetti sviluppati con una squadra di agenti [Claude Code](https://code.claude.com/docs): in pochi minuti un nuovo progetto ha agenti, skill, guardrail deterministici, CI agentica e convenzioni già collaudati, e li riceve aggiornati quando il framework evolve.
 
-> **Stato: in sviluppo (versione in `VERSION`).** Esiste lo scheletro del repository (marketplace, due plugin, template Copier minimo, CI di validazione) gli hook di guardia, gli agenti e le skill di flusso e il template del nucleo; pacchetto di stack arrivano con le prossime issue ([roadmap](docs/roadmap.md)).
+> **Stato: in sviluppo (versione in `VERSION`).** Esiste lo scheletro del repository (marketplace, due plugin, template Copier minimo, CI di validazione) gli hook di guardia, gli agenti, le skill di flusso, il template del nucleo e il pacchetto Next.js + Supabase + Vercel; budget, release e guida all'adozione arrivano con le prossime issue ([roadmap](docs/roadmap.md)).
 
 ## Stato dello sviluppo
 
 | Componente | Stato |
 | --- | --- |
-| Marketplace `my-ai-squad` e plugin `squad-core`, `squad-nextjs-supabase` | scheletro vuoto |
+| Marketplace `my-ai-squad` e plugin `squad-core`, `squad-nextjs-supabase` | fatto |
 | Template Copier del nucleo (`template/`): `AGENTS.md`/`CLAUDE.md`, impostazioni con marketplace e plugin, template di issue e PR, script di label e Project, workflow di triage e chiusura issue, CI con gate `verifica`; `copier update` verificato | fatto ([guida](docs/guides/template.md)) |
 | CI di validazione (`claude plugin validate`, `copier copy`, versione) | attiva |
 | Hook di guardia in `squad-core` (comandi, perimetri di scrittura, `Stop`) con test; regole `deny` su `.env*` nel template | fatto ([guida](docs/guides/guardrail.md)) |
 | Agenti della squadra in `squad-core` (`triage`, `product-analyst`, `test-engineer`, `implementer`, `reviewer`, `security-reviewer`) con controllo automatico | fatto |
 | Skill di flusso in `squad-core` (`work-on-issue`, `next-task`, `run-tasks`, `task-review`, `prepare-pr`, `owasp-check`, `rebase-pr`) con controllo automatico | fatto |
 | Progetto campione generato (con e senza stack) e verificato a ogni PR: stessi passi del gate `verifica`, su PR di codice e di soli documenti | fatto (`tests/sample.sh`) |
-| Pacchetto di stack | da fare |
+| Pacchetto Next.js + Supabase + Vercel: hook su Supabase remoto e deploy, skill `supabase-security` e `supabase-migration`; nel template CI `statico` → `e2e` → `verifica`, release, Dependabot, pre-push, `rls-check` e `grant-check` | fatto ([guida](docs/guides/nextjs-supabase.md)) |
 
 La versione è in [`VERSION`](VERSION) ed è incrementata a ogni PR con `tests/bump-version.sh`.
 

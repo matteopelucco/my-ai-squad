@@ -1,0 +1,34 @@
+#!/bin/sh
+# Controlli prima di ogni push, fermandosi al primo errore: tipi, lint, duplicati, unit
+# test, build. Niente e2e (servono DB e minuti: li fa la CI). Si attiva con lo script npm
+# "prepare": "git config core.hooksPath .githooks".
+# La build è l'unico passo che intercetta un import lato server finito in un componente
+# client: saltabile con SKIP_BUILD_PRE_PUSH=1; se .env.local manca o è incompleta avvisa
+# e la salta (è la configurazione della macchina, non il codice: la CI la esegue comunque).
+set -e
+
+step() { printf '── %s\n' "$1"; }
+
+step "Type-check";  npm run --silent typecheck
+step "Lint";        npm run --silent lint
+step "Duplicati";   npm run --silent check:dup
+step "Unit test";   npm run --silent test:unit
+
+step "Build"
+if [ -n "$SKIP_BUILD_PRE_PUSH" ]; then
+  echo "Saltata (SKIP_BUILD_PRE_PUSH)."
+else
+  missing=""
+  for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+    if [ ! -f .env.local ] || [ -z "$(grep -E "^${var}=." .env.local | tail -1)" ]; then
+      missing="$missing $var"
+    fi
+  done
+  if [ -n "$missing" ]; then
+    echo "Saltata: .env.local assente o senza$missing (vedi .env.example)."
+  else
+    npm run --silent build
+  fi
+fi
+
+echo "Controlli pre-push superati."

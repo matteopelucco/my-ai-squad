@@ -1,0 +1,144 @@
+#!/usr/bin/env node
+// RLS-check: fails when an object of schema `public` exposed to `anon`/`authenticated`
+// bypasses Row Level Security:
+//  - a table (relkind r/p) with RLS disabled: anyone with the public anon key reads it all;
+//  - a view (v) without `security_invoker = true`: runs as its owner, skipping the RLS below;
+//  - a materialized view (m) or foreign table (f): they cannot have RLS at all.
+// Read-only, on the TEST database just reset by CI. Exceptions: `tablesWithoutRls` and
+// `exposedWithoutRls` in supabase/security-allowlist.json, each with a reason.
+// Usage: node scripts/rls-check.mjs
+
+import { allowlist, isMain, queryTestDb } from './supabase-query.mjs';
+
+const KNOWN_RELKINDS = ['r', 'p', 'v', 'm', 'f'];
+const EXPOSED_ROLES = ['authenticated', 'anon'];
+const KIND_NAME = { v: 'vista', m: 'vista materializzata', f: 'tabella esterna' };
+
+export const RLS_QUERY = `select c.relname as name,
+  c.relkind::text as relkind,
+  c.relrowsecurity as rls,
+  c.reloptions as reloptions,
+  coalesce(array(
+    select r.rolname from pg_roles r
+    where r.rolname in ('authenticated', 'anon')
+      and (
+        has_table_privilege(r.rolname, c.oid, 'SELECT,INSERT,UPDATE,DELETE')
+        or has_any_column_privilege(r.rolname, c.oid, 'SELECT,INSERT,UPDATE')
+      )
+    order by r.rolname
+  ), '{}') as grantees
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f')`;
+
+const isTable = (o) => o.relkind === 'r' || o.relkind === 'p';
+const exposes = (o) => o.grantees.some((g) => EXPOSED_ROLES.includes(g));
+const exposedRoles = (o) => o.grantees.filter((g) => EXPOSED_ROLES.includes(g)).join(', ');
+
+// Postgres booleans (parse_bool): prefixes of true/yes, on, 1.
+const TRUE_VALUES = ['t', 'tr', 'tru', 'true', 'y', 'ye', 'yes', 'on', '1'];
+
+/** The last `security_invoker=` option wins; anything not recognised as true is false. */
+export function hasSecurityInvoker(reloptions) {
+  let value = false;
+  for (const opt of reloptions) {
+    const eq = opt.indexOf('=');
+    if (eq < 0 || opt.slice(0, eq).trim().toLowerCase() !== 'security_invoker') continue;
+    value = TRUE_VALUES.includes(opt.slice(eq + 1).trim().toLowerCase());
+  }
+  return value;
+}
+
+/** Postgres text array "{a,b}" or JS array of strings; null when unreadable. */
+function textArray(value) {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) return value.every((x) => typeof x === 'string') ? value : null;
+  if (typeof value === 'string' && value.startsWith('{') && value.endsWith('}')) {
+    return value.slice(1, -1).split(',').map((x) => x.trim().replace(/^"(.*)"$/, '$1')).filter(Boolean);
+  }
+  return null;
+}
+
+/**
+ * Normalises the Management API response. Fail-closed: any unexpected shape is an error,
+ * never a silent normalisation that could hide a violation.
+ * @returns {{ objects: {name: string, relkind: string, rls: boolean, grantees: string[], reloptions: string[]}[] } | { error: string }}
+ */
+export function normalizeRows(response) {
+  if (!Array.isArray(response)) return { error: 'Risposta non affidabile: non è un array di righe.' };
+  const objects = [];
+  for (const r of response) {
+    if (typeof r !== 'object' || r === null || typeof r.name !== 'string' || typeof r.rls !== 'boolean') {
+      return { error: `Risposta non affidabile: riga inattesa (${JSON.stringify(r)}).` };
+    }
+    if (!KNOWN_RELKINDS.includes(r.relkind)) {
+      return { error: `Risposta non affidabile: relkind inatteso per public.${r.name}.` };
+    }
+    const grantees = textArray(r.grantees);
+    const reloptions = textArray(r.reloptions);
+    if (grantees === null || reloptions === null) {
+      return { error: `Risposta non affidabile: grantees o reloptions inattesi per public.${r.name}.` };
+    }
+    objects.push({ name: r.name, relkind: r.relkind, rls: r.rls, grantees, reloptions });
+  }
+  return { objects };
+}
+
+/** Exposed tables with RLS disabled. */
+export function findTablesWithoutRls(objects, allowed = []) {
+  return objects.filter((o) => isTable(o) && !o.rls && exposes(o) && !allowed.includes(o.name));
+}
+
+/** Exposed views without security_invoker, materialized views and foreign tables. */
+export function findExposedWithoutRls(objects, allowed = []) {
+  return objects.filter(
+    (o) => !isTable(o) && exposes(o) && !allowed.includes(o.name) && !(o.relkind === 'v' && hasSecurityInvoker(o.reloptions)),
+  );
+}
+
+/** Zero objects means an unmigrated database or a wrong ref, not "all good". */
+export function guard(objects) {
+  return objects.some(isTable) ? null : 'Nessuna tabella letta da public: DB non migrato o ref sbagliato, controllo non affidabile.';
+}
+
+export function formatViolations(tables, others) {
+  const lines = [
+    ...tables.map((o) => `RLS disattivata: public.${o.name} ha privilegi per ${exposedRoles(o)}`),
+    ...others.map((o) =>
+      o.relkind === 'v'
+        ? `Vista senza security_invoker: public.${o.name} (privilegi per ${exposedRoles(o)}) scavalca la RLS delle tabelle sottostanti`
+        : `Oggetto senza RLS: public.${o.name} (${KIND_NAME[o.relkind]}) ha privilegi per ${exposedRoles(o)}`,
+    ),
+  ];
+  return [
+    ...lines,
+    '',
+    'Rimedio, in una migration: ENABLE ROW LEVEL SECURITY con le policy per i ruoli; viste con',
+    'security_invoker = true; per viste materializzate e tabelle esterne REVOKE ALL ... FROM anon,',
+    'authenticated. Mai togliere un grant solo per far passare il check. Solo se l\'oggetto è pubblico',
+    'per scelta: voce motivata in supabase/security-allowlist.json, con review del security-reviewer.',
+  ].join('\n');
+}
+
+if (isMain(import.meta.url)) {
+  const normalized = normalizeRows(await queryTestDb(RLS_QUERY));
+  if ('error' in normalized) {
+    console.error(normalized.error);
+    process.exit(2);
+  }
+  const { objects } = normalized;
+  const unreliable = guard(objects);
+  if (unreliable) {
+    console.error(unreliable);
+    process.exit(2);
+  }
+  const tables = findTablesWithoutRls(objects, allowlist('tablesWithoutRls'));
+  const others = findExposedWithoutRls(objects, allowlist('exposedWithoutRls'));
+  console.log(`RLS-check: ${objects.length} oggetti in public.`);
+  if (tables.length > 0 || others.length > 0) {
+    console.error(formatViolations(tables, others));
+    for (const o of [...tables, ...others]) console.log(`::error::public.${o.name} esposto senza RLS`);
+    process.exit(1);
+  }
+  console.log('OK: nessun oggetto esposto ad anon/authenticated aggira la RLS.');
+}

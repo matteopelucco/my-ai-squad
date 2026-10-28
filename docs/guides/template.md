@@ -10,7 +10,7 @@ Genera un progetto con `copier copy gh:matteopelucco/my-ai-squad nome-progetto` 
 | `docs_language` | lingua di documenti, issue e PR (codice e commit restano in inglese, ADR-0008) |
 | `visibility` | regole su segreti e dati nelle istruzioni |
 | `verify_fast`, `verify_full` | `verify` di `.claude/squad.json` (hook `Stop`) e sezione Controlli di `AGENTS.md` |
-| `stack` | abilita anche il pacchetto di stack in `enabledPlugins` |
+| `stack` | abilita il pacchetto di stack in `enabledPlugins` e ne genera i file ([guida](nextjs-supabase.md)); con `nextjs-supabase` propone anche i comandi di verifica |
 | `merge_mode` | `human`: nessun merge degli agenti; `ai-driven`: ADR-0004 |
 
 ## Cosa genera
@@ -19,7 +19,8 @@ Genera un progetto con `copier copy gh:matteopelucco/my-ai-squad nome-progetto` 
 - `.claude/settings.json`: marketplace `my-ai-squad`, plugin abilitati e regole `deny` sui file `.env*`; `.claude/squad.json`: verifica, modalità di merge, perimetri di scrittura degli agenti.
 - Template di issue (`feature`, `bug`, `chore`) e di PR (con prova e «non verificato»).
 - `scripts/setup-labels.sh` (idempotente) e `scripts/setup-project.sh`: da eseguire una volta con `gh` autenticato.
-- Workflow `squad-triage` e `squad-close-issue`, e `ci.yml` con il job `verifica`: lo richiede il ruleset di `main`; esegue `verifyFull` (o `verify`) di `.claude/squad.json` e salta i controlli se la PR tocca solo documenti (`scripts/classify-changes.sh`).
+- Con `stack=nextjs-supabase`: CI a tre job, release, Dependabot, hook pre-push, `rls-check` e `grant-check` ([guida](nextjs-supabase.md)).
+- Workflow `squad-triage` e `squad-close-issue`, e (senza stack) `ci.yml` con il job `verifica`: lo richiede il ruleset di `main`; esegue `verifyFull` (o `verify`) di `.claude/squad.json` e salta i controlli se la PR tocca solo documenti (`scripts/classify-changes.sh`).
 
 ## Workflow agentici (ADR-0011, ADR-0012)
 
@@ -27,4 +28,4 @@ Il triage parte solo su issue di `OWNER`, `MEMBER` o `COLLABORATOR`, con tool el
 
 ## Progetto campione
 
-`tests/sample.sh` (parte di `tests/validate.sh`, quindi della CI del framework) genera un progetto con e senza pacchetto di stack, esegue i passi del gate `verifica` e controlla la classificazione su una PR di codice, una di soli documenti e una mista.
+`tests/sample.sh` (parte di `tests/validate.sh`, quindi della CI del framework) genera un progetto con e senza pacchetto di stack, esegue i passi del gate `verifica` e controlla la classificazione su una PR di codice, una di soli documenti e una mista; con lo stack esegue anche il gate a tre job, l'hook pre-push e il calcolo del tag.
