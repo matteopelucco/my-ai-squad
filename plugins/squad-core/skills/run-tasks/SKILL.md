@@ -14,7 +14,14 @@ Argomenti `$ARGUMENTS`: un intero = `n`, tetto di task (assente: 3); `--dry-run`
 2. `gh auth status` ok.
 3. Esistono le label `ai-driven` e `human-in-the-loop` (altrimenti creale con `gh label create`).
 4. PR `human-in-the-loop` aperte in attesa: se sono 3 o più, fermati.
-5. Se `AGENTS.md` indica un limite di budget del piano, rispettalo: dopo ogni task rileggi i consumi e fermati se la soglia è raggiunta. Senza strumenti per leggerli, usa `n` e dillo.
+5. Budget: vedi la Fase 0b.
+
+## Fase 0b — Budget del piano
+Claude Code documenta `/usage` per le persone, non una lettura da programma: **chiedi all'utente** le due percentuali che `/usage` mostra (finestra di 5 ore e settimanale) e calcola con lo script, che usa i tetti di `budget` in `.claude/squad.json` (default 80 % / 85 % / contesto 60 %):
+
+`node "${CLAUDE_SKILL_DIR}/budget.mjs" --used-5h <p5> --used-week <ps> [--n <n>] --config .claude/squad.json`
+
+Il risultato JSON dice quanti task ci stanno (`n`) e perché. Se l'utente non può dare i numeri, lo script restituisce il numero di ripiego (2, o `n` se passato) e lo dici: i tetti non sono controllati. Dopo **ogni** task richiedi le percentuali e ricalcola il costo con `--learn --before-5h … --after-5h … --before-week … --after-week …` (tiene la differenza massima osservata), poi ripianifica; se il prossimo task non ci sta, fermati e riporta quando si resetta la finestra. Il contesto della sessione oltre il tetto (60 %) è un motivo di fermata: suggerisci `/clear` o una sessione nuova.
 
 ## Fase 1 — Selezione
 `gh issue list --label status:ready --state open`. Scarta: `status:needs-info`, `blocked`, `in-progress`, `review`; issue con PR aperta collegata; "Dipende da #X" ancora aperte; madri con sub-issue aperte. Ordine: la priorità indicata in `AGENTS.md` (o la board del progetto), altrimenti `type:bug` prima e poi numero crescente; un bug può scavalcare solo i vicini, non l'intera lista. Issue senza `status:ready`: prima `squad-core:triage`; se esce `needs-info`, salta alla successiva. Prendi i primi `n`. Con `--dry-run` stampa tabella (n°, titolo, bug sì/no, classificazione prevista) e fermati.

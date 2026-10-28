@@ -16,3 +16,4 @@
 | 0010 | [Adozione dal progetto campione, poi sitescanner, communio e girasole](0010-adozione-dal-progetto-campione-poi-sitescanner-communio-girasole.md) | accepted | 2026-10-27 |
 | 0011 | [Agenti in CI solo su eventi di collaboratori e con permessi minimi](0011-agenti-in-ci-solo-su-eventi-di-collaboratori-e-con-permessi-minimi.md) | accepted | 2026-10-27 |
 | 0012 | [Autenticazione degli agenti in CI: abbonamento o chiave API](0012-autenticazione-degli-agenti-in-ci.md) | proposed | 2026-10-27 |
+| 0013 | [Versione unica del framework e release da `main`](0013-versione-unica-e-release-da-main.md) | accepted | 2026-10-28 |

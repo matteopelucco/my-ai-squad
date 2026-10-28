@@ -2,7 +2,7 @@
 
 Framework per progetti sviluppati con una squadra di agenti [Claude Code](https://code.claude.com/docs): in pochi minuti un nuovo progetto ha agenti, skill, guardrail deterministici, CI agentica e convenzioni già collaudati, e li riceve aggiornati quando il framework evolve.
 
-> **Stato: in sviluppo (versione in `VERSION`).** Esiste lo scheletro del repository (marketplace, due plugin, template Copier minimo, CI di validazione) gli hook di guardia, gli agenti, le skill di flusso, il template del nucleo e il pacchetto Next.js + Supabase + Vercel; budget, release e guida all'adozione arrivano con le prossime issue ([roadmap](docs/roadmap.md)).
+> **Stato: roadmap della 0.1 completata (versione in `VERSION`).** Marketplace con due plugin (nucleo e stack Next.js + Supabase + Vercel), template Copier, hook di guardia, agenti, skill di flusso, budget, ricetta cloud, release e guida all'adozione sono implementati e verificati in CI. Restano l'autenticazione degli agenti in CI ([#12](https://github.com/matteopelucco/my-ai-squad/issues/12)) e l'adozione nei progetti ([roadmap](docs/roadmap.md)).
 
 ## Stato dello sviluppo
 
@@ -16,6 +16,10 @@ Framework per progetti sviluppati con una squadra di agenti [Claude Code](https:
 | Skill di flusso in `squad-core` (`work-on-issue`, `next-task`, `run-tasks`, `task-review`, `prepare-pr`, `owasp-check`, `rebase-pr`) con controllo automatico | fatto |
 | Progetto campione generato (con e senza stack) e verificato a ogni PR: stessi passi del gate `verifica`, su PR di codice e di soli documenti | fatto (`tests/sample.sh`) |
 | Pacchetto Next.js + Supabase + Vercel: hook su Supabase remoto e deploy, skill `supabase-security` e `supabase-migration`; nel template CI `statico` → `e2e` → `verifica`, release, Dependabot, pre-push, `rls-check` e `grant-check` | fatto ([guida](docs/guides/nextjs-supabase.md)) |
+| Budget del piano: tetti configurabili, stima del costo per task, ripiego esplicito senza lettura dei consumi | fatto ([guida](docs/guides/budget.md), `tests/budget/`) |
+| Ricetta cloud opzionale e ruleset di `main` nel template | fatto, **non provata dal vivo** ([guida](docs/guides/cloud.md)) |
+| Versione unica, tag e release GitHub con note dai Conventional Commits, bloccate dal progetto campione rosso | fatto ([ADR-0013](docs/adr/0013-versione-unica-e-release-da-main.md)); il workflow non è mai girato |
+| Guida all'adozione e all'aggiornamento | fatto ([guida](docs/guides/adozione.md)) |
 
 La versione è in [`VERSION`](VERSION) ed è incrementata a ogni PR con `tests/bump-version.sh`.
 

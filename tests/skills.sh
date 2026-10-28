@@ -16,6 +16,7 @@ for s in next-task run-tasks prepare-pr rebase-pr; do
 done
 f="$dir/run-tasks/SKILL.md"
 grep -q 'ai-driven' "$f" && grep -q 'human-in-the-loop' "$f" || { echo "run-tasks: mancano le classi ai-driven/human-in-the-loop"; exit 1; }
+test -f "$dir/run-tasks/budget.mjs" && grep -q 'budget.mjs' "$f" || { echo "run-tasks: manca la fase di budget"; exit 1; }
 grep -q -- '--admin' "$f" || { echo "run-tasks: deve vietare --admin"; exit 1; }
 
 if grep -rniE 'girasole|communio|sitescanner|supabase|next\.?js|vercel|playwright|\brls\b' plugins/squad-core/skills plugins/squad-core/agents; then

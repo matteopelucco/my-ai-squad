@@ -32,11 +32,11 @@ Ricavati dall'[analisi](research/2026-10-analisi-setup-ai.md); ognuno diventa re
 - [x] Hook di guardia deterministici con test, regole `deny`, hook `Stop`
 - [x] Template Copier del nucleo
 - [x] Pacchetto Next.js/Supabase/Vercel
-- [ ] Budget del piano Pro con strumenti documentati
-- [ ] Ricetta opzionale per le attività schedulate in cloud (ADR-0006)
+- [x] Budget del piano Pro con strumenti documentati
+- [x] Ricetta opzionale per le attività schedulate in cloud (ADR-0006)
 - [x] Progetto campione generato e verificato in CI
-- [ ] Versionamento, release e changelog
-- [ ] Guida all'adozione e all'aggiornamento
+- [x] Versionamento, release e changelog
+- [x] Guida all'adozione e all'aggiornamento
 
 ## Adozione (ADR-0010)
 
