@@ -14,4 +14,5 @@ Rebase della PR `$ARGUMENTS` (obbligatorio; se manca, chiedilo).
    - Qualsiasi altro conflitto: `git rebase --abort`, lascia la PR com'è e segnala il conflitto all'umano.
 4. Controlli del progetto (`verify`) dopo il rebase.
 5. `git push --force-with-lease origin <branch>`: **solo** la branch della PR. Mai `--force` nudo, mai `main`: gli hook di guardia chiedono conferma sul force.
-6. Riporta cosa è cambiato e che la CI riparte.
+6. Attendi la CI con un solo `gh pr checks <n> --watch --fail-fast` in background (verrai richiamato quando finisce). Se è rossa, leggi solo `gh run view <id> --log-failed`.
+7. Riporta cosa è cambiato e l'esito della CI (verde, o rossa con il motivo; mai "in corso").

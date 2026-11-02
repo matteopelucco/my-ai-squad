@@ -177,3 +177,52 @@ export function evaluateWrite(scopes, profile, filePath, projectDir, extraAllowe
     reason: `[${profile}] può scrivere solo in: ${allowedPaths.join(', ')} (writeScopes di .claude/squad.json). Percorso rifiutato: ${relative}. Non riprovare con un altro strumento: segnala la modifica necessaria all'orchestratore.`,
   };
 }
+
+const CHECK_FAILED = new Set(['FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED', 'STARTUP_FAILURE']);
+
+/**
+ * Groups a PR's `statusCheckRollup` (check runs and commit statuses, as `gh pr view --json`
+ * returns them) by outcome. Skipped and neutral checks count as passed.
+ * @param {{ name?: string, context?: string, status?: string, conclusion?: string, state?: string }[]} rollup
+ * @returns {{ pending: string[], failed: string[] }}
+ */
+export function summarizeChecks(rollup = []) {
+  const pending = [];
+  const failed = [];
+  for (const check of rollup) {
+    const name = check.name || check.context || '?';
+    const outcome = (check.conclusion || check.state || '').toUpperCase();
+    // A check run is running until its status is COMPLETED; a commit status while PENDING/EXPECTED.
+    const running = check.status ? check.status.toUpperCase() !== 'COMPLETED' : ['PENDING', 'EXPECTED'].includes(outcome);
+    if (running) pending.push(name);
+    else if (CHECK_FAILED.has(outcome)) failed.push(name);
+  }
+  return { pending, failed };
+}
+
+/**
+ * Whether the session may end its turn given the CI of the current branch's PR: the reason to
+ * keep working when the checks of the pushed commit are still running or have failed.
+ * @param {{ number: number, state: string, headRefOid: string, statusCheckRollup?: object[] } | null} pr
+ * @param {string | null} localHead commit checked out locally
+ * @returns {string | null}
+ */
+export function ciStopReason(pr, localHead) {
+  // Unpushed commits: the checks belong to an older commit, the push is still to come.
+  if (!pr || pr.state !== 'OPEN' || !localHead || pr.headRefOid !== localHead) return null;
+  const { pending, failed } = summarizeChecks(pr.statusCheckRollup);
+  if (failed.length) {
+    return (
+      `La CI della PR #${pr.number} è fallita (${failed.join(', ')}). Prima di chiudere leggi solo i job falliti ` +
+      `(\`gh run view <id> --log-failed\`) e correggi, oppure riporta all'utente l'esito e cosa deve decidere.`
+    );
+  }
+  if (pending.length) {
+    return (
+      `La CI della PR #${pr.number} è in corso (${pending.join(', ')}). Attendila con un solo ` +
+      `\`gh pr checks ${pr.number} --watch --fail-fast\` in background: verrai richiamato quando finisce. ` +
+      `Se la stai già attendendo, o non spetta a te, dillo all'utente e chiudi.`
+    );
+  }
+  return null;
+}

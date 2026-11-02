@@ -27,8 +27,15 @@ Lancia `squad-core:implementer` con il numero della issue. Lui: branch `<tipo>/<
 - Se serve sicurezza, **proponilo all'utente** (costa) e lancia `squad-core:security-reviewer` solo dopo un sì.
 - Rilievi bloccanti: una tornata di correzione con l'implementer, poi nuova review. Se restano, fermati e riporta.
 
-## 6. Esito
-Riassumi in 4 righe: cosa è stato fatto, link alla PR, esito dei controlli, cosa deve decidere l'umano. Non fai merge: il merge segue `/squad-core:run-tasks` per i task `ai-driven`, altrimenti è dell'umano.
+## 6. CI
+Dopo l'ultimo push attendi la CI della PR con **un solo** comando in background: `gh pr checks <pr> --watch --fail-fast`. Verrai richiamato quando finisce; niente cicli di `sleep`, niente controlli a vuoto. Se è rossa, leggi solo i job falliti (`gh run view <id> --log-failed`):
+- **regressione**: una tornata di correzione con l'implementer, nuovo push, nuova attesa. Se resta rossa, fermati e riporta;
+- **infrastruttura** o flaky noto: `gh run rerun <id> --failed` **una** volta. Se resta rossa per lo stesso motivo, riporta "CI bloccata da infrastruttura".
+
+L'hook `Stop` ti rimanda al lavoro se chiudi con la CI in corso o rossa.
+
+## 7. Esito
+Riassumi in 4 righe: cosa è stato fatto, link alla PR, esito dei controlli **e della CI** (verde, rossa con il motivo; mai "in corso"), cosa deve decidere l'umano. Non fai merge: il merge segue `/squad-core:run-tasks` per i task `ai-driven`, altrimenti è dell'umano.
 
 ## Regole
 Una issue alla volta. Niente `--admin`, `--no-verify`, force push. Segreti mai nei commenti. Commenti con `--body-file`.

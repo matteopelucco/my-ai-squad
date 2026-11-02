@@ -1,4 +1,5 @@
-// Looks up on GitHub whether the PRs a command merges may be merged by an agent.
+// GitHub lookups of the guard hooks: whether the PRs a command merges may be merged by an
+// agent, and the CI of the current branch's PR.
 
 import { execFileSync } from 'node:child_process';
 import { isAiDriven } from './rules.mjs';
@@ -28,5 +29,19 @@ export function mergeAllowed(refs, cwd, run = gh) {
     });
   } catch {
     return false;
+  }
+}
+
+/**
+ * The open PR of the current branch with its checks, or null when there is none or GitHub
+ * cannot be reached.
+ * @param {string} cwd
+ * @param {(args: string[], cwd: string) => string} [run] injectable for tests
+ */
+export function currentPr(cwd, run = gh) {
+  try {
+    return JSON.parse(run(['pr', 'view', '--json', 'number,state,headRefOid,statusCheckRollup'], cwd));
+  } catch {
+    return null;
   }
 }
