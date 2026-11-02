@@ -9,6 +9,7 @@
 // Prints one JSON object. Exit code 0 always, except on invalid arguments (2).
 
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 export const DEFAULTS = {
   caps: { fiveHour: 80, weekly: 85, context: 60 },
@@ -94,7 +95,8 @@ function parseArgs(argv) {
   return out;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Run directly (not imported): compare URLs, so that Windows paths match too.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const args = parseArgs(process.argv.slice(2));
     let budget = {};

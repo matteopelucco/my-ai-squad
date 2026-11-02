@@ -3,6 +3,7 @@
 // Usage: node scripts/release-notes.mjs <version> [<previous-tag>]   (reads git log; prints Markdown)
 
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const SECTIONS = [
   ['feat', 'Novità'],
@@ -52,7 +53,7 @@ export function renderNotes(version, subjects) {
   out.push(
     '## Come aggiornare',
     '',
-    '- **Plugin**: si aggiornano all\'avvio di Claude Code se l\'aggiornamento automatico del marketplace è attivo, altrimenti con `/plugin marketplace update my-ai-squad`.',
+    '- **Plugin**: si aggiornano all\'avvio di Claude Code se l\'aggiornamento automatico del marketplace è attivo, altrimenti da terminale con `claude plugin marketplace update my-ai-squad` e `claude plugin update squad-core@my-ai-squad` ([README](README.md#aggiornare-i-plugin)), poi riavvio della sessione.',
     '- **File di progetto**: `copier update` propone le novità del template come diff da rivedere in una PR.',
     '- Dettagli e conflitti: [guida all\'adozione e all\'aggiornamento](docs/guides/adozione.md#aggiornare-un-progetto).',
     '',
@@ -60,7 +61,8 @@ export function renderNotes(version, subjects) {
   return out.join('\n');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Run directly (not imported): compare URLs, so that Windows paths match too.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [version, previous] = process.argv.slice(2);
   if (!version) {
     process.stderr.write('usage: release-notes.mjs <version> [<previous-tag>]\n');
