@@ -30,6 +30,19 @@ python3 -m venv ~/.venvs/copier && ~/.venvs/copier/bin/pip install copier
 PATH=~/.venvs/copier/bin:$PATH tests/validate.sh   # serve anche Node 20+
 ```
 
+## Aggiornare i plugin
+
+Claude Code confronta il plugin installato con la sua copia locale del marketplace, non con GitHub. Finché quella copia non viene aggiornata, il pulsante «Aggiorna» nelle impostazioni dei plugin resta spento anche se è uscita una release. Da VS Code o dall'app desktop, `/plugin marketplace update` apre solo la finestra dei plugin, quindi usa la CLI da un terminale:
+
+```bash
+claude plugin marketplace update my-ai-squad      # aggiorna la copia locale del catalogo
+claude plugin update squad-core@my-ai-squad       # aggiorna il plugin installato
+claude plugin update squad-nextjs-supabase@my-ai-squad   # se installato
+claude plugin list                                # controlla la versione
+```
+
+Hook, skill e agenti nuovi si caricano all'avvio: dopo l'aggiornamento riavvia la sessione di Claude Code. Il plugin si aggiorna nell'ambito in cui è installato (`user` vale per tutti i progetti). Installa `squad-nextjs-supabase` solo quando il progetto ha `supabase.testProjectRef` in `.claude/squad.json`: senza quel valore il suo hook nega ogni operazione Supabase remota.
+
 ## Da dove nasce
 
 Dal setup costruito a mano in [girasole](https://github.com/matteopelucco/girasole) (registro elettronico in produzione) e [communio](https://github.com/matteopelucco/communio), confrontato con lo stato dell'arte a ottobre 2026: [analisi](docs/research/2026-10-analisi-setup-ai.md).
