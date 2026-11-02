@@ -6,8 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
-import { mergeAllowed } from '../../plugins/squad-core/hooks/lib/github.mjs';
-import { agentProfile, evaluateCommand, evaluateWrite, isAiDriven, mergeTargets } from '../../plugins/squad-core/hooks/lib/rules.mjs';
+import { currentPr, mergeAllowed } from '../../plugins/squad-core/hooks/lib/github.mjs';
+import { agentProfile, ciStopReason, evaluateCommand, evaluateWrite, isAiDriven, mergeTargets, summarizeChecks } from '../../plugins/squad-core/hooks/lib/rules.mjs';
 
 const hooks = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../plugins/squad-core/hooks');
 const branch = { branch: 'feat/4-x' };
@@ -146,6 +146,51 @@ const elsewhere = (dir) => {
   return { TMPDIR: other, TEMP: other, TMP: other };
 };
 
+describe('CI of the current PR', () => {
+  const run = (name, status, conclusion) => ({ __typename: 'CheckRun', name, status, conclusion });
+  const ctx = (context, state) => ({ __typename: 'StatusContext', context, state });
+  const pr = (rollup, extra = {}) => ({ number: 7, state: 'OPEN', headRefOid: 'abc', statusCheckRollup: rollup, ...extra });
+
+  it('groups check runs and commit statuses by outcome', () => {
+    const rollup = [
+      run('statico', 'COMPLETED', 'SUCCESS'),
+      run('e2e', 'IN_PROGRESS', ''),
+      run('lint', 'QUEUED', null),
+      run('verifica', 'COMPLETED', 'FAILURE'),
+      run('docs', 'COMPLETED', 'SKIPPED'),
+      run('old', 'COMPLETED', 'CANCELLED'),
+      ctx('deploy', 'PENDING'),
+      ctx('scan', 'ERROR'),
+      ctx('ok', 'SUCCESS'),
+    ];
+    assert.deepEqual(summarizeChecks(rollup), { pending: ['e2e', 'lint', 'deploy'], failed: ['verifica', 'old', 'scan'] });
+    assert.deepEqual(summarizeChecks(undefined), { pending: [], failed: [] });
+  });
+
+  it('keeps the session working while the checks of the pushed commit run or fail', () => {
+    const running = ciStopReason(pr([run('e2e', 'IN_PROGRESS', '')]), 'abc');
+    assert.match(running, /PR #7 è in corso \(e2e\)/);
+    assert.match(running, /gh pr checks 7 --watch --fail-fast/);
+    const failed = ciStopReason(pr([run('e2e', 'IN_PROGRESS', ''), run('verifica', 'COMPLETED', 'FAILURE')]), 'abc');
+    assert.match(failed, /fallita \(verifica\)/);
+    assert.match(failed, /--log-failed/);
+  });
+
+  it('lets the session stop when there is nothing to wait for', () => {
+    assert.equal(ciStopReason(pr([run('ci', 'COMPLETED', 'SUCCESS')]), 'abc'), null);
+    assert.equal(ciStopReason(pr([]), 'abc'), null);
+    assert.equal(ciStopReason(pr([run('ci', 'IN_PROGRESS', '')]), 'def'), null); // unpushed commits
+    assert.equal(ciStopReason(pr([run('ci', 'IN_PROGRESS', '')], { state: 'MERGED' }), 'abc'), null);
+    assert.equal(ciStopReason(null, 'abc'), null);
+  });
+
+  it('reads the PR of the current branch and survives lookup failures', () => {
+    const data = pr([]);
+    assert.deepEqual(currentPr('.', (args) => (assert.deepEqual(args.slice(0, 2), ['pr', 'view']), JSON.stringify(data))), data);
+    assert.equal(currentPr('.', () => { throw new Error('no pull requests found'); }), null);
+  });
+});
+
 function runHook(script, input, { env = {}, args = [], cwd } = {}) {
   return spawnSync('node', [path.join(hooks, script), ...args], {
     input: JSON.stringify(input),
@@ -228,6 +273,18 @@ describe('hook scripts', () => {
     assert.match(out.systemMessage, /product-analyst docs\/ specs\//);
     writeFileSync(path.join(project, '.claude', 'squad.json'), '{}');
     assert.equal(runHook('session-check.mjs', { cwd: project }, { env: { CLAUDE_PROJECT_DIR: project } }).stdout, '');
+  });
+
+  it('stop-ci is silent outside a PR branch, when disabled and when already sent back', () => {
+    const env = { CLAUDE_PROJECT_DIR: project };
+    // the test project is not a git repository: no branch, no PR
+    writeFileSync(path.join(project, '.claude', 'squad.json'), '{}');
+    const plain = runHook('stop-ci.mjs', { cwd: project }, { env });
+    assert.equal(plain.status, 0);
+    assert.equal(plain.stdout, '');
+    writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ waitForCi: false }));
+    assert.equal(runHook('stop-ci.mjs', { cwd: project }, { env }).stdout, '');
+    assert.equal(runHook('stop-ci.mjs', { cwd: project, stop_hook_active: true }, { env }).stdout, '');
   });
 
   it('stop-verify does nothing without a verify command', () => {

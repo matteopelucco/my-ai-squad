@@ -38,6 +38,8 @@ Le operazioni remote su database e deploy di produzione dipendono dallo stack: l
 
 `verify` in `.claude/squad.json` è il comando rapido del progetto (typecheck, lint, test veloci). Se fallisce, l'hook rimanda Claude al lavoro con la coda dell'output; una sola volta per arresto, per non andare in ciclo. Senza `verify` non fa nulla.
 
+**CI della PR** (`stop-ci.mjs`): se il branch corrente ha una PR aperta e i check dell'ultimo commit pushato sono in corso o falliti, l'hook rimanda Claude al lavoro una volta. Il messaggio chiede di attendere la CI con un solo `gh pr checks <pr> --watch --fail-fast` in background, o di leggere i job falliti; altrimenti Claude deve dire all'utente che la CI resta da guardare. Così una PR non resta senza nessuno che ne guardi la CI dopo un push. Non fa nulla su `main`, senza PR o senza check, con commit locali non ancora pushati, se `gh` non risponde, o con `"waitForCi": false` in `.claude/squad.json`. Il risveglio a fine CI funziona solo finché la sessione resta aperta.
+
 ## Limiti
 
 Le regole leggono la riga di comando. Il controllo delle scritture segue anche `bash -c "…"` e `pwsh -Command`, ma non apre i file di script: `node build.mjs` o `npm test` possono scrivere ovunque senza che l'hook lo veda. Sono un argine contro gli errori, non una barriera contro un agente ostile; il ruleset di `main` su GitHub e la review della PR restano la difesa vera.

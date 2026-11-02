@@ -11,7 +11,7 @@ Framework per progetti sviluppati con una squadra di agenti [Claude Code](https:
 | Marketplace `my-ai-squad` e plugin `squad-core`, `squad-nextjs-supabase` | fatto |
 | Template Copier del nucleo (`template/`): `AGENTS.md`/`CLAUDE.md`, impostazioni con marketplace e plugin, template di issue e PR, script di label e Project, workflow di triage e chiusura issue, CI con gate `verifica`; `copier update` verificato | fatto ([guida](docs/guides/template.md)) |
 | CI di validazione (`claude plugin validate`, `copier copy`, versione) | attiva |
-| Hook di guardia in `squad-core` (comandi, perimetri di scrittura anche dalla shell e con default senza `squad.json`, avviso di adozione incompleta, `Stop`) con test; regole `deny` su `.env*` nel template | fatto ([guida](docs/guides/guardrail.md)) |
+| Hook di guardia in `squad-core` (comandi, perimetri di scrittura anche dalla shell e con default senza `squad.json`, avviso di adozione incompleta, `Stop` su verifica e CI della PR) con test; regole `deny` su `.env*` nel template | fatto ([guida](docs/guides/guardrail.md)) |
 | Agenti della squadra in `squad-core` (`triage`, `product-analyst`, `test-engineer`, `implementer`, `reviewer`, `security-reviewer`) con controllo automatico | fatto |
 | Skill di flusso in `squad-core` (`work-on-issue`, `next-task`, `run-tasks`, `task-review`, `prepare-pr`, `owasp-check`, `rebase-pr`) con controllo automatico | fatto |
 | Progetto campione generato (con e senza stack) e verificato a ogni PR: stessi passi del gate `verifica`, su PR di codice e di soli documenti | fatto (`tests/sample.sh`) |
