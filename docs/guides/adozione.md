@@ -49,7 +49,7 @@ Si adotta in **una PR**, rivedibile, mai direttamente su `main` (ADR-0010). Ordi
 
 Due canali indipendenti.
 
-**Plugin** (agenti, skill, hook): Se l'aggiornamento automatico del marketplace è attivo, Claude Code lo aggiorna all'avvio; altrimenti `/plugin marketplace update my-ai-squad`. Non c'è nulla da unire: cambia il comportamento al prossimo avvio. Leggi le [release](https://github.com/matteopelucco/my-ai-squad/releases): un cambio incompatibile è in cima alle note.
+**Plugin** (agenti, skill, hook): se l'aggiornamento automatico del marketplace è attivo, Claude Code lo aggiorna all'avvio. Altrimenti, da un terminale, `claude plugin marketplace update my-ai-squad` e poi `claude plugin update squad-core@my-ai-squad` (e `squad-nextjs-supabase@my-ai-squad`, se installato): il primo aggiorna solo il catalogo, il secondo il plugin. Dettagli nel [README](../../README.md#aggiornare-i-plugin). Non c'è nulla da unire: il nuovo comportamento parte al prossimo avvio della sessione. Leggi le [release](https://github.com/matteopelucco/my-ai-squad/releases): un cambio incompatibile è in cima alle note.
 
 **File di progetto** (template):
 ```bash
