@@ -122,18 +122,14 @@ function evaluateSegment(segment, context) {
 }
 
 /**
- * Decides whether an agent profile may write `filePath`.
- * @param {Record<string, string[]>} scopes write scopes per profile, as path prefixes
- *   relative to the project root (POSIX separators); a prefix ending in "/" matches a
- *   directory, otherwise an exact file
- * @param {string} profile
- * @param {string} filePath absolute or project-relative path
- * @param {string} projectDir absolute project root
- * @param {string[]} [extraAllowedRoots] absolute roots always allowed (e.g. the OS temp dir)
- * @returns {Decision | null}
+ * Agents whose writes are confined to a profile of the same name in `writeScopes`, with the
+ * scope they get when `.claude/squad.json` does not declare one (the template's default).
  */
-/** Agents whose writes are confined to a profile of the same name in `writeScopes`. */
-export const SCOPED_AGENTS = ['product-analyst', 'test-engineer'];
+export const DEFAULT_WRITE_SCOPES = {
+  'product-analyst': ['docs/', 'specs/'],
+  'test-engineer': ['tests/', 'test/', 'e2e/'],
+};
+export const SCOPED_AGENTS = Object.keys(DEFAULT_WRITE_SCOPES);
 
 /**
  * Maps a hook's `agent_type` (bare or plugin-scoped, e.g. `squad-core:test-engineer`) to its
@@ -146,6 +142,17 @@ export function agentProfile(agentType) {
   return SCOPED_AGENTS.includes(name) ? name : undefined;
 }
 
+/**
+ * Decides whether an agent profile may write `filePath`.
+ * @param {Record<string, string[]>} scopes write scopes per profile, as path prefixes
+ *   relative to the project root (POSIX separators); a prefix ending in "/" matches a
+ *   directory, otherwise an exact file
+ * @param {string} profile
+ * @param {string} filePath absolute or project-relative path
+ * @param {string} projectDir absolute project root
+ * @param {string[]} [extraAllowedRoots] absolute roots always allowed (e.g. the OS temp dir)
+ * @returns {Decision | null}
+ */
 export function evaluateWrite(scopes, profile, filePath, projectDir, extraAllowedRoots = []) {
   const allowedPaths = scopes[profile];
   if (!allowedPaths) return { decision: 'deny', reason: `Profilo di scrittura sconosciuto: ${profile}. Va dichiarato in writeScopes di .claude/squad.json.` };
@@ -167,6 +174,6 @@ export function evaluateWrite(scopes, profile, filePath, projectDir, extraAllowe
   if (allowed) return null;
   return {
     decision: 'deny',
-    reason: `[${profile}] può scrivere solo in: ${allowedPaths.join(', ')}. Percorso rifiutato: ${relative}. Segnala la modifica necessaria all'orchestratore.`,
+    reason: `[${profile}] può scrivere solo in: ${allowedPaths.join(', ')} (writeScopes di .claude/squad.json). Percorso rifiutato: ${relative}. Non riprovare con un altro strumento: segnala la modifica necessaria all'orchestratore.`,
   };
 }

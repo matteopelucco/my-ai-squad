@@ -22,7 +22,15 @@ Le operazioni remote su database e deploy di produzione dipendono dallo stack: l
 ## File
 
 - **File `.env*`**: regole `deny` di lettura in `.claude/settings.json` del template.
-- **Perimetri di scrittura per agente** (hook `guard-paths.mjs`): gli agenti di un plugin non possono dichiarare hook propri, quindi il plugin ne registra uno per ogni scrittura e riconosce l'agente da `agent_type`. Limita `product-analyst` e `test-engineer` ai percorsi di `writeScopes` in `.claude/squad.json` (il template propone `docs/`, `specs/` e `tests/`); un agente limitato senza perimetro dichiarato non scrive niente, gli altri agenti e la sessione principale non sono toccati; `/tmp` è sempre consentito. I revisori sono in sola lettura perché non hanno i tool di scrittura.
+- **Perimetri di scrittura per agente** (hook `guard-paths.mjs`): gli agenti di un plugin non possono dichiarare hook propri, quindi il plugin ne registra uno per ogni scrittura e riconosce l'agente da `agent_type`. Limita `product-analyst` e `test-engineer` ai percorsi di `writeScopes` in `.claude/squad.json`. Se il file manca, o non dichiara il perimetro di uno dei due, vale quello predefinito, uguale al template: `docs/` e `specs/` per l'analista; `tests/`, `test/` ed `e2e/` per il test engineer. L'agente resta limitato invece di restare bloccato. Gli altri agenti e la sessione principale non sono toccati; la cartella temporanea del sistema è sempre consentita. I revisori sono in sola lettura perché non hanno i tool di scrittura.
+- **Scritture dalla shell degli agenti limitati** (hook `guard-commands.mjs`): per `product-analyst` e `test-engineer` nega i comandi Bash o PowerShell che scrivono fuori dal perimetro, anche dentro `bash -c` e dopo un `cd`. Sono comandi come:
+  - redirezioni `>` e `>>`, `tee`, `sed -i`;
+  - `cp`, `mv`, `rm`, `touch`;
+  - `git checkout -- …`, `git restore`;
+  - `Set-Content`, `Out-File`, `Remove-Item`.
+
+  Nega sempre i comandi di cui non si vede la destinazione: codice in linea (`node -e`, `python -c`, script da standard input), `git apply`, `git stash`, `git reset --hard`, `xargs`, destinazioni scritte con variabili. Eseguire i test e leggere resta consentito, e il testo di un heredoc non viene letto come comando.
+- **Avviso di adozione incompleta** (hook `SessionStart`, `session-check.mjs`): se il plugin è attivo e `.claude/squad.json` manca, lo segnala all'avvio della sessione e dice quali default valgono finché il file non c'è.
 
 - **Modalità di merge** (`mergeMode` in `.claude/squad.json`): con `human` l'hook nega ogni `gh pr merge` degli agenti; con `ai-driven` (o assente) vale la regola dell'ADR-0004.
 
@@ -32,4 +40,4 @@ Le operazioni remote su database e deploy di produzione dipendono dallo stack: l
 
 ## Limiti
 
-Le regole leggono la riga di comando: non vedono un comando dentro `bash -c "…"` o uno script. Sono un argine contro gli errori, non una barriera contro un agente ostile; il ruleset di `main` su GitHub resta la difesa vera.
+Le regole leggono la riga di comando. Il controllo delle scritture segue anche `bash -c "…"` e `pwsh -Command`, ma non apre i file di script: `node build.mjs` o `npm test` possono scrivere ovunque senza che l'hook lo veda. Sono un argine contro gli errori, non una barriera contro un agente ostile; il ruleset di `main` su GitHub e la review della PR restano la difesa vera.

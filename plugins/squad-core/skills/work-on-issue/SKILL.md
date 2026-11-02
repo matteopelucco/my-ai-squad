@@ -32,3 +32,4 @@ Riassumi in 4 righe: cosa è stato fatto, link alla PR, esito dei controlli, cos
 
 ## Regole
 Una issue alla volta. Niente `--admin`, `--no-verify`, force push. Segreti mai nei commenti. Commenti con `--body-file`.
+Se un agente riporta una scrittura rifiutata da un hook, non scrivere al suo posto e non cambiare `writeScopes`: fermati, riporta il messaggio e lascia la decisione all'umano. Se l'agente ha già modificato file fuori dal perimetro, elencali come da rivedere.

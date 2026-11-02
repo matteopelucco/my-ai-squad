@@ -131,10 +131,20 @@ describe('evaluateWrite', () => {
     assert.equal(evaluateWrite(scopes, 'docs', '/etc/passwd', project)?.decision, 'deny');
     assert.equal(evaluateWrite(scopes, 'nope', 'docs/a.md', project)?.decision, 'deny');
   });
+  it('tells the agent not to retry with another tool', () => {
+    assert.match(evaluateWrite(scopes, 'docs', 'src/a.ts', project).reason, /Non riprovare con un altro strumento/);
+  });
   it('allows extra roots', () => {
     assert.equal(evaluateWrite(scopes, 'docs', path.join(os.tmpdir(), 'x'), project, [os.tmpdir()]), null);
   });
 });
+
+// The OS temp dir is always writable and the test projects live in it: point it elsewhere
+// (TMPDIR on POSIX, TEMP/TMP on Windows).
+const elsewhere = (dir) => {
+  const other = path.join(dir, '..', 'elsewhere');
+  return { TMPDIR: other, TEMP: other, TMP: other };
+};
 
 function runHook(script, input, { env = {}, args = [], cwd } = {}) {
   return spawnSync('node', [path.join(hooks, script), ...args], {
@@ -167,22 +177,57 @@ describe('hook scripts', () => {
 
   it('guard-paths blocks out-of-scope writes with exit 2', () => {
     writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ writeScopes: { docs: ['docs/'] } }));
-    // The OS temp dir is always writable, and the project lives in it: point it elsewhere.
-    const env = { CLAUDE_PROJECT_DIR: project, TMPDIR: path.join(project, '..', 'elsewhere') };
+    const env = { CLAUDE_PROJECT_DIR: project, ...elsewhere(project) };
     assert.equal(runHook('guard-paths.mjs', { tool_input: { file_path: 'src/a.ts' } }, { env, args: ['docs'] }).status, 2);
     assert.equal(runHook('guard-paths.mjs', { tool_input: { file_path: 'docs/a.md' } }, { env, args: ['docs'] }).status, 0);
   });
 
   it('guard-paths derives the profile from agent_type and ignores other agents', () => {
     writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ writeScopes: { 'test-engineer': ['tests/'] } }));
-    const env = { CLAUDE_PROJECT_DIR: project, TMPDIR: path.join(project, '..', 'elsewhere') };
+    const env = { CLAUDE_PROJECT_DIR: project, ...elsewhere(project) };
     const run = (agent_type, file_path) => runHook('guard-paths.mjs', { agent_type, tool_input: { file_path } }, { env }).status;
     assert.equal(run('squad-core:test-engineer', 'src/a.ts'), 2);
     assert.equal(run('test-engineer', 'tests/a.test.ts'), 0);
     assert.equal(run('squad-core:implementer', 'src/a.ts'), 0);
     assert.equal(run(undefined, 'src/a.ts'), 0);
-    // restricted agent with no declared scope fails closed
-    assert.equal(run('squad-core:product-analyst', 'docs/a.md'), 2);
+    // a restricted agent with no declared scope gets the default one, not a total block
+    assert.equal(run('squad-core:product-analyst', 'specs/a.md'), 0);
+    assert.equal(run('squad-core:product-analyst', 'src/a.ts'), 2);
+  });
+
+  it('guard-paths applies the default scopes without .claude/squad.json', () => {
+    const bare = mkdtempSync(path.join(os.tmpdir(), 'squad-bare-'));
+    const env = { CLAUDE_PROJECT_DIR: bare, ...elsewhere(bare) };
+    const run = (agent_type, file_path) => runHook('guard-paths.mjs', { agent_type, tool_input: { file_path } }, { env });
+    assert.equal(run('squad-core:product-analyst', 'specs/55.md').status, 0);
+    const denied = run('squad-core:product-analyst', 'src/a.ts');
+    assert.equal(denied.status, 2);
+    assert.match(denied.stderr, /docs\/, specs\//);
+    assert.equal(run('squad-core:test-engineer', 'tests/a.test.ts').status, 0);
+  });
+
+  it('guard-commands blocks shell writes outside the scope of a confined agent only', () => {
+    writeFileSync(path.join(project, '.claude', 'squad.json'), '{}');
+    const run = (agent_type, command) =>
+      runHook('guard-commands.mjs', { agent_type, tool_input: { command }, cwd: project }, { env: { CLAUDE_PROJECT_DIR: project } }).stdout;
+    const out = JSON.parse(run('squad-core:product-analyst', 'node -e "1"'));
+    assert.equal(out.hookSpecificOutput.permissionDecision, 'deny');
+    assert.match(out.hookSpecificOutput.permissionDecisionReason, /^\[guard-commands\] \[product-analyst\]/);
+    assert.equal(run('squad-core:product-analyst', 'echo x > specs/a.md'), '');
+    assert.equal(run('squad-core:implementer', 'echo x > src/a.ts'), '');
+    assert.equal(run(undefined, 'node -e "1"'), '');
+  });
+
+  it('session-check warns only when .claude/squad.json is missing', () => {
+    const bare = mkdtempSync(path.join(os.tmpdir(), 'squad-bare-'));
+    const warned = runHook('session-check.mjs', { cwd: bare }, { env: { CLAUDE_PROJECT_DIR: bare } });
+    assert.equal(warned.status, 0);
+    const out = JSON.parse(warned.stdout);
+    assert.equal(out.hookSpecificOutput.hookEventName, 'SessionStart');
+    assert.match(out.systemMessage, /squad\.json/);
+    assert.match(out.systemMessage, /product-analyst docs\/ specs\//);
+    writeFileSync(path.join(project, '.claude', 'squad.json'), '{}');
+    assert.equal(runHook('session-check.mjs', { cwd: project }, { env: { CLAUDE_PROJECT_DIR: project } }).stdout, '');
   });
 
   it('stop-verify does nothing without a verify command', () => {
