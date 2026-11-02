@@ -296,13 +296,13 @@ describe('hook scripts', () => {
 
   it('stop-verify blocks while verify fails and lets go when it passes or already active', () => {
     const env = { CLAUDE_PROJECT_DIR: project };
-    writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ verify: 'echo broken >&2; exit 1' }));
+    writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ verify: `node -e "process.stderr.write('broken'); process.exit(1)"` }));
     const failing = runHook('stop-verify.mjs', { cwd: project }, { env });
     const out = JSON.parse(failing.stdout);
     assert.equal(out.decision, 'block');
     assert.match(out.reason, /broken/);
     assert.equal(runHook('stop-verify.mjs', { cwd: project, stop_hook_active: true }, { env }).stdout, '');
-    writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ verify: 'true' }));
+    writeFileSync(path.join(project, '.claude', 'squad.json'), JSON.stringify({ verify: 'node -e ""' }));
     assert.equal(runHook('stop-verify.mjs', { cwd: project }, { env }).stdout, '');
   });
 });

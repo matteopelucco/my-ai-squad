@@ -1,5 +1,8 @@
 // Tests for the release notes generator. Run: node --test "tests/*/*.test.mjs"
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import { groupCommits, renderNotes } from '../../scripts/release-notes.mjs';
 
@@ -26,10 +29,22 @@ describe('renderNotes', () => {
     assert.ok(md.startsWith('# my-ai-squad 1.2.0'));
     assert.ok(md.indexOf('## Novità') < md.indexOf('## Correzioni'));
     assert.match(md, /copier update/);
-    assert.match(md, /plugin marketplace update my-ai-squad/);
+    assert.match(md, /claude plugin marketplace update my-ai-squad/);
+    assert.match(md, /claude plugin update squad-core@my-ai-squad/);
   });
 
   it('says so when there is nothing to report', () => {
     assert.match(renderNotes('1.0.0', []), /Nessuna modifica rilevante/);
+  });
+});
+
+describe('release-notes.mjs CLI', () => {
+  // Run by path, as the release workflow does: the "run directly" check must hold on every OS.
+  const script = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../scripts/release-notes.mjs');
+  it('prints the notes when run directly and refuses a missing version', () => {
+    const out = spawnSync(process.execPath, [script, '9.9.9'], { encoding: 'utf8' });
+    assert.equal(out.status, 0);
+    assert.ok(out.stdout.startsWith('# my-ai-squad 9.9.9'));
+    assert.equal(spawnSync(process.execPath, [script], { encoding: 'utf8' }).status, 2);
   });
 });
